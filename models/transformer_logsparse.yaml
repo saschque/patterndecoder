@@ -1,0 +1,3 @@
+name: Transformer_Logsparse
+architecture: patterndecoder.transformer.TransformerBlock
+attention: patterndecoder.attention.LogSparseAttention
