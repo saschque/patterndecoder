@@ -78,6 +78,8 @@ You may also use a custom dataset. Make sure to align your dataset with the prep
 git clone https://github.com/saschque/patterndecoder.git
 cd patterndecoder
 python setup.py install
+# or
+# make init
 ```
 
 2. Run the Jupyter notebook to train and evaluate models:
