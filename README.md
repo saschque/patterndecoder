@@ -71,7 +71,7 @@ python setup.py install
 The study uses historical daily closing prices of the DAX40 index spanning from March 28, 2022, to March 28, 2025, providing 768 trading days of information. The data is preprocessed by:
 1. Converting prices to daily log returns using the formula $r_t = \ln\left(\frac{P_t}{P_{t-1}}\right)$ to ensure stationarity, as confirmed by ADF and KPSS tests
 2. Using a $30$-day input window ($L=w=30$) for 1-day ahead ($h=1$) prediction
-3. Splitting into training ($80\%$) and testing ($20\%$) sets, yielding $537$ training observations and $231$ test observations
+3. Splitting into training ($70\%$) and testing ($30\%$) sets, yielding $537$ training observations and $231$ test observations
 
 You can use the provided dataset in the `data` directory or download updated data using the commented code in the notebook.
 You may also use a custom dataset. Make sure to align your dataset with the preprocessing methods used in this project. 
