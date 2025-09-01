@@ -2,8 +2,8 @@
 """
 Utilities for dataset handling and preprocessing in machine learning projects.
 
-This module provides functions and classes to facilitate data loading, transformation, 
-and preparation for model training and evaluation. It supports various formats and 
+This module provides functions and classes to facilitate data loading, transformation,
+and preparation for model training and evaluation. It supports various formats and
 frameworks, enabling efficient data management for time series forecasting and other tasks.
 
 Key Features:
@@ -37,6 +37,7 @@ import pandas as pd
 from prettytable import PrettyTable
 from statsmodels.tsa.arima.model import ARIMAResultsWrapper
 
+
 def string_to_object(path):
     """
     Converts a string representation of a class name to the actual class object.
@@ -48,16 +49,17 @@ def string_to_object(path):
         object: The class object corresponding to the provided string path.
     """
     # Split the string into module path and class name
-    if '.' not in path:
+    if "." not in path:
         getattr(path)
-    module_path, class_name = path.rsplit('.', 1)
+    module_path, class_name = path.rsplit(".", 1)
     module = importlib.import_module(module_path)
     return getattr(module, class_name)
 
-def load_model(params, path ="models/example.yaml"):
+
+def load_model(params, path="models/example.yaml"):
     """
-    Loads the specified model 
-    
+    Loads the specified model
+
     Args:
         path (str): String representation of the yaml containing model specs.
     Returns:
@@ -67,8 +69,8 @@ def load_model(params, path ="models/example.yaml"):
         model_params = yaml.safe_load(file)
         name = model_params["name"]
         att = string_to_object(model_params["attention"])(
-                n_heads=params["n_heads"],
-                d_model=params["d_model"],
+            n_heads=params["n_heads"],
+            d_model=params["d_model"],
         )
         model = string_to_object(model_params["architecture"])(params, att, name)
     return model
@@ -96,28 +98,28 @@ def get_stock_data(params, download=False):
     data_type = params["type"]
     # Download the DataFrame from Yahoo Finance
     if download:
-        df = yf.download(tickers=[params["ticker"]],
-                         period=params["period"],
-                         interval=params["interval"],
-                         auto_adjust=False,
-                         prepost=True,
-                         threads=True,
-                         proxy=None,
-                         progress=False
-                         )
+        df = yf.download(
+            tickers=[params["ticker"]],
+            period=params["period"],
+            interval=params["interval"],
+            auto_adjust=False,
+            prepost=True,
+            threads=True,
+            proxy=None,
+            progress=False,
+        )
 
-        df.columns = df.columns.get_level_values('Price')
+        df.columns = df.columns.get_level_values("Price")
         df.to_csv(f"{path}{ticker}.{data_type}")
 
     # Read the DataFrame from path
-    series_dataframe = pd.read_csv(f"{path}{ticker}.{data_type}",
-                                   index_col=0,
-                                   sep=",")
-    series_dataframe.index = pd.to_datetime(series_dataframe.index,
-                                           format='%Y-%m-%d',
-                                           errors='coerce')
+    series_dataframe = pd.read_csv(f"{path}{ticker}.{data_type}", index_col=0, sep=",")
+    series_dataframe.index = pd.to_datetime(
+        series_dataframe.index, format="%Y-%m-%d", errors="coerce"
+    )
 
     return series_dataframe
+
 
 def load_config(path="config/config.yaml"):
     """
@@ -135,10 +137,12 @@ def load_config(path="config/config.yaml"):
         config = yaml.safe_load(file)
     return config
 
+
 def split_dataset(dataset, test_ratio=0.30):
     """Splits a panda dataframe in two."""
     test_indices = np.random.rand(len(dataset)) < test_ratio
     return dataset[~test_indices], dataset[test_indices]
+
 
 def compile_and_train(model, data, config_path="config/config.yaml"):
     """
@@ -161,15 +165,15 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
     params = load_config(config_path)
 
     # Generating the training and validation sets
-    #train_size = int(data.shape[0] * (1-validation_split))
-    #train_data = data.iloc[:train_size]
-    #val_data = data.iloc[train_size:]
-    #train_set, val_set = split_dataset(data, validation_split)
-    #val_ds = WindowedDataset(params)(data, shuffle=True)
+    # train_size = int(data.shape[0] * (1-validation_split))
+    # train_data = data.iloc[:train_size]
+    # val_data = data.iloc[train_size:]
+    # train_set, val_set = split_dataset(data, validation_split)
+    # val_ds = WindowedDataset(params)(data, shuffle=True)
     train_ds = WindowedDataset(params)(data, shuffle=True)
 
     # Model checkpoint to save the best model
-    file_path = params["tmp_weights_file"] + model.name +".keras"
+    file_path = params["tmp_weights_file"] + model.name + ".keras"
 
     callbacks = []
     if params["restore_best"]:
@@ -178,7 +182,7 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
             monitor=params["metrics"][0],
             mode="min",
             save_best_only=True,
-            verbose=params["verbose"]
+            verbose=params["verbose"],
         )
         callbacks.append(checkpoint)
 
@@ -187,7 +191,7 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
         earlystopping = tf.keras.callbacks.EarlyStopping(
             monitor=params["metrics"][0],
             restore_best_weights=False,
-            patience=params["patience"]
+            patience=params["patience"],
         )
         callbacks.append(earlystopping)
 
@@ -195,19 +199,15 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
     optimizer = string_to_object(params["optimizer"])(
         learning_rate=params["learning_rate"]
     )
-    #optimizer = optimizer_class(learning_rate=training_params["learning_rate"])
-    #optimizer = tf.keras.optimizers.Lion(learning_rate=training_params["learning_rate"])
+    # optimizer = optimizer_class(learning_rate=training_params["learning_rate"])
+    # optimizer = tf.keras.optimizers.Lion(learning_rate=training_params["learning_rate"])
     # For Lion optimizer, see:
     # https://arxiv.org/abs/2302.01107
     # https://arxiv.org/abs/2302.06675
 
-    model.compile(
-        loss=params["loss"],
-        optimizer=optimizer,
-        metrics=params["metrics"]
-    )
+    model.compile(loss=params["loss"], optimizer=optimizer, metrics=params["metrics"])
 
-    if params["training"] is False :
+    if params["training"] is False:
         model.fit(train_ds, epochs=1, verbose=0)
         model.load_weights(file_path)
         return None, model
@@ -217,8 +217,8 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
         train_ds,
         epochs=params["epochs"],
         callbacks=callbacks,
-        #validation_data=val_ds,
-        verbose=params["verbose"]
+        # validation_data=val_ds,
+        verbose=params["verbose"],
     )
 
     # Load best weights
@@ -227,12 +227,12 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
     return history, model
 
 
-class WindowedDataset():
+class WindowedDataset:
     """
     Generates sliding windows of time series data for model training.
 
-    This class creates TensorFlow datasets from pandas DataFrames, enabling models 
-    to train on sequences of historical data to predict future values based on 
+    This class creates TensorFlow datasets from pandas DataFrames, enabling models
+    to train on sequences of historical data to predict future values based on
     the specified forecast horizon.
 
     Args:
@@ -273,20 +273,22 @@ class WindowedDataset():
         self.shuffle_buffer = params["shuffle_buffer"]
         self.columns = params["columns"]
 
-    def __call__(self, dataframe, shuffle=False, training_mode=True, multi_horizon=False):
+    def __call__(
+        self, dataframe, shuffle=False, training_mode=True, multi_horizon=False
+    ):
         """
         Generates a TensorFlow Dataset of sliding windows from a pandas DataFrame.
 
         Args:
             dataframe (pd.DataFrame): Time series data containing features.
             shuffle (bool): Whether to shuffle the dataset. Default is False.
-            training_mode (bool): Whether to apply training-specific transformations. 
+            training_mode (bool): Whether to apply training-specific transformations.
                 Default is True.
             multi_horizon (bool): If True, predict all steps from 1 to forecast_horizon.
                 If False, predict only the value at forecast_horizon steps ahead.
 
         Returns:
-            tf.data.Dataset: Dataset containing windows with input features (`x`) 
+            tf.data.Dataset: Dataset containing windows with input features (`x`)
                 and future targets (`y`) based on forecast horizon.
         """
 
@@ -299,22 +301,25 @@ class WindowedDataset():
         # Validate data length
         min_length = self.window_size + self.forecast_horizon
         if len(data_array) < min_length:
-            raise ValueError(f"Need at least {min_length} samples, got {len(data_array)}")
+            raise ValueError(
+                f"Need at least {min_length} samples, got {len(data_array)}"
+            )
 
         # Create input dataset
         inputs = tf.keras.preprocessing.timeseries_dataset_from_array(
-            data=data_array[:-self.forecast_horizon],  # Exclude last forecast_horizon samples
+            data=data_array[
+                : -self.forecast_horizon
+            ],  # Exclude last forecast_horizon samples
             targets=None,
             sequence_length=self.window_size,
             sequence_stride=self.stride,
             shuffle=False,
-            batch_size=self.batch_size
+            batch_size=self.batch_size,
         )
 
         # Predict all steps from t+1 to t+forecast_horizon
         target_offset = self.window_size + self.forecast_horizon - 1
         target_seq_length = self.forecast_horizon
-
 
         # Create target dataset
         targets = tf.keras.preprocessing.timeseries_dataset_from_array(
@@ -323,7 +328,7 @@ class WindowedDataset():
             sequence_length=target_seq_length,
             sequence_stride=self.stride,
             shuffle=False,
-            batch_size=self.batch_size
+            batch_size=self.batch_size,
         )
 
         # Combine inputs and targets
@@ -354,6 +359,7 @@ def get_rmse(test_data, predicted_data):
     mse = np.mean(np.square(test_data - predicted_data))
     return np.sqrt(mse)
 
+
 def get_mae(test_data, predicted_data):
     """
     Computes the Mean Absolute Error (MAE) between actual and predicted values.
@@ -368,7 +374,8 @@ def get_mae(test_data, predicted_data):
     mae_value = np.mean(np.abs(test_data - predicted_data))
     return mae_value
 
-class Naive():
+
+class Naive:
     """
     Implements a simple naive forecasting model that returns zeros as predictions.
 
@@ -418,9 +425,10 @@ class Naive():
 
         return np.zeros(shape=(count, self.forecast_horizon))
 
+
 def get_model_performance(model, params, dataset):
     """
-    Computes metrics like MAE/RMSE for the model on train/test datasets 
+    Computes metrics like MAE/RMSE for the model on train/test datasets
     and stores results in a dictionary.
 
     Returns:
@@ -433,41 +441,43 @@ def get_model_performance(model, params, dataset):
 
     # Make predictions
     if isinstance(model, ARIMAResultsWrapper):
-        predictions = model.predict(start=params["window_size"]+1, end=len(dataset))
+        predictions = model.predict(start=params["window_size"] + 1, end=len(dataset))
         # ARIMA predictions are already aligned with the correct indices
-        #predictions = predictions.values.reshape(-1, 1)
+        # predictions = predictions.values.reshape(-1, 1)
     else:
         predictions = model.predict(windowed_dataset, verbose=0)
         # predictions shape: (num_windows, forecast_horizon, num_features)
         # Since forecast_horizon=1, squeeze that dimension
         if len(predictions.shape) == 3:
-            predictions = predictions.squeeze(axis=1)  # Shape: (num_windows, num_features)
+            predictions = predictions.squeeze(
+                axis=1
+            )  # Shape: (num_windows, num_features)
 
     # Calculate the correct number of predictions
     num_predictions = len(dataset) - params["window_size"]
 
     # Ensure predictions match expected length
     if len(predictions) != num_predictions:
-        raise ValueError(f"Length {len(predictions)} doesn't match expected {num_predictions}")
+        raise ValueError(
+            f"Length {len(predictions)} doesn't match expected {num_predictions}"
+        )
 
     # Create DataFrame for predictions - align with correct indices
     predictions_df = pd.DataFrame(
         predictions,
-        index=dataset.index[params["window_size"]:],  # Use original dataset indices
-        columns=dataset.columns if hasattr(
-            dataset,
-            'columns'
-            ) else [f'feature_{i}' for i in range(predictions.shape[1])]
+        index=dataset.index[params["window_size"] :],  # Use original dataset indices
+        columns=dataset.columns
+        if hasattr(dataset, "columns")
+        else [f"feature_{i}" for i in range(predictions.shape[1])],
     )
 
     # Create DataFrame for actual values - these are the target values we're predicting
     actuals_df = pd.DataFrame(
-        dataset.iloc[params["window_size"]:].values,
-        index=dataset.index[params["window_size"]:],
-        columns=dataset.columns if hasattr(
-            dataset,
-            'columns'
-            ) else [f'feature_{i}' for i in range(dataset.shape[1])]
+        dataset.iloc[params["window_size"] :].values,
+        index=dataset.index[params["window_size"] :],
+        columns=dataset.columns
+        if hasattr(dataset, "columns")
+        else [f"feature_{i}" for i in range(dataset.shape[1])],
     )
 
     # Calculate metrics
@@ -483,14 +493,14 @@ def get_model_performance(model, params, dataset):
     # predictions_cum = actuals_cum + (predictions_df - actuals_df).cumsum()
 
     return {
-        'mae': mae,
-        'rmse': rmse,
-        'predictions': predictions_df,
-        'predictions_cum': predictions_cum
+        "mae": mae,
+        "rmse": rmse,
+        "predictions": predictions_df,
+        "predictions_cum": predictions_cum,
     }
 
 
-class Forecasts():
+class Forecasts:
     """
     Evaluates and visualizes model performances on train/test datasets.
 
@@ -505,7 +515,7 @@ class Forecasts():
 
     Methods:
         generate_model_performances():
-            Computes metrics like MAE/RMSE for each model on train/test datasets and stores results 
+            Computes metrics like MAE/RMSE for each model on train/test datasets and stores results
             in a dictionary.
 
         get_forecasts(dataset, model):
@@ -546,11 +556,11 @@ class Forecasts():
 
     def generate_model_performances(self):
         """
-        Computes metrics like MAE/RMSE for each model on train/test datasets 
+        Computes metrics like MAE/RMSE for each model on train/test datasets
         and stores results in a dictionary.
 
         Returns:
-            list[dict]: List of dictionaries containing metrics and predictions for each 
+            list[dict]: List of dictionaries containing metrics and predictions for each
                         model evaluated.
         """
 
@@ -559,25 +569,29 @@ class Forecasts():
         for model in self.models:
             if isinstance(model, ARIMAResultsWrapper):
                 model.name = "ARIMA"
-            train_performance = get_model_performance(model, self.params, self.train_data)
+            train_performance = get_model_performance(
+                model, self.params, self.train_data
+            )
             test_performance = get_model_performance(model, self.params, self.test_data)
 
-            model_performances.append({
-                "name": model.name,
-                "train_prediction": np.exp(train_performance["predictions_cum"]),
-                "train_actuals" : np.exp(self.train_data[window_size:].cumsum()),
-                "train_log_prediction": train_performance["predictions"],
-                "train_log_actuals" : self.train_data[window_size:],
-                "test_prediction": np.exp(test_performance["predictions_cum"]),
-                "test_actuals": np.exp(self.test_data[window_size:].cumsum()),
-                "test_log_prediction": test_performance["predictions"],
-                "test_log_actuals": self.test_data[window_size:],
-                "color" : "red",
-                "mae_train": train_performance["mae"],
-                "mae_test": test_performance["mae"],
-                "rmse_train": train_performance["rmse"],
-                "rmse_test": test_performance["rmse"],
-                })
+            model_performances.append(
+                {
+                    "name": model.name,
+                    "train_prediction": np.exp(train_performance["predictions_cum"]),
+                    "train_actuals": np.exp(self.train_data[window_size:].cumsum()),
+                    "train_log_prediction": train_performance["predictions"],
+                    "train_log_actuals": self.train_data[window_size:],
+                    "test_prediction": np.exp(test_performance["predictions_cum"]),
+                    "test_actuals": np.exp(self.test_data[window_size:].cumsum()),
+                    "test_log_prediction": test_performance["predictions"],
+                    "test_log_actuals": self.test_data[window_size:],
+                    "color": "red",
+                    "mae_train": train_performance["mae"],
+                    "mae_test": test_performance["mae"],
+                    "rmse_train": train_performance["rmse"],
+                    "rmse_test": test_performance["rmse"],
+                }
+            )
         return model_performances
 
     def plot_model_performances(self):
@@ -603,80 +617,62 @@ class Forecasts():
 
         for performance in self.model_performances:
             # Plot the graph
-            __, axs = plt.subplots(2,2, figsize=(20, 6))
+            __, axs = plt.subplots(2, 2, figsize=(20, 6))
             plt.subplots_adjust(hspace=0.5, wspace=0.125)
 
             # Subplot 1: in-sample cumulative return predictions
             axs[0][0].grid()
             axs[0][0].plot(
-                performance["train_actuals"],
-                color='black',
-                label='Train Set'
+                performance["train_actuals"], color="black", label="Train Set"
             )
             axs[0][0].plot(
                 performance["train_prediction"],
                 color=performance["color"],
-                label=performance["name"]
+                label=performance["name"],
             )
-            axs[0][0].set_title(
-                performance["name"]+ ' (in-sample)'
-            )
-            axs[0][0].tick_params(axis='x', rotation=30)
-            axs[0][0].legend(loc='lower right')
+            axs[0][0].set_title(performance["name"] + " (in-sample)")
+            axs[0][0].tick_params(axis="x", rotation=30)
+            axs[0][0].legend(loc="lower right")
 
             # Subplot 2: out-of-sample cumulative return predictions
             axs[0][1].grid()
-            axs[0][1].plot(
-                performance["test_actuals"],
-                color='black',
-                label='Test Set'
-            )
+            axs[0][1].plot(performance["test_actuals"], color="black", label="Test Set")
             axs[0][1].plot(
                 performance["test_prediction"],
                 color=performance["color"],
-                label=performance["name"]
+                label=performance["name"],
             )
-            axs[0][1].set_title(
-                performance["name"]+' (out-of-sample)'
-            )
-            axs[0][1].tick_params(axis='x', rotation=30)
-            axs[0][1].legend(loc='lower right')
+            axs[0][1].set_title(performance["name"] + " (out-of-sample)")
+            axs[0][1].tick_params(axis="x", rotation=30)
+            axs[0][1].legend(loc="lower right")
 
             # Subplot 3: in-sample log return predictions
             axs[1][0].grid()
             axs[1][0].plot(
-                performance["train_log_actuals"],
-                color='black',
-                label='Train Set'
+                performance["train_log_actuals"], color="black", label="Train Set"
             )
             axs[1][0].plot(
                 performance["train_log_prediction"],
                 color=performance["color"],
-                label=performance["name"]
+                label=performance["name"],
             )
-            axs[1][0].set_title(
-                performance["name"]+' (in-sample)'
-            )
-            axs[1][0].tick_params(axis='x', rotation=30)
-            axs[1][0].legend(loc='lower right')
+            axs[1][0].set_title(performance["name"] + " (in-sample)")
+            axs[1][0].tick_params(axis="x", rotation=30)
+            axs[1][0].legend(loc="lower right")
 
             # Subplot 2: out-of-sample log return predictions
             axs[1][1].grid()
             axs[1][1].plot(
-                performance["test_log_actuals"],
-                color='black',
-                label='Test Set'
+                performance["test_log_actuals"], color="black", label="Test Set"
             )
             axs[1][1].plot(
                 performance["test_log_prediction"],
                 color=performance["color"],
-                label=performance["name"]
+                label=performance["name"],
             )
-            axs[1][1].set_title(
-                performance["name"]+' (out-of-sample)'
-            )
-            axs[1][1].tick_params(axis='x', rotation=30)
-            axs[1][1].legend(loc='lower right')
+            axs[1][1].set_title(performance["name"] + " (out-of-sample)")
+            axs[1][1].tick_params(axis="x", rotation=30)
+            axs[1][1].legend(loc="lower right")
         plt.show()
 
     def print_model_metrics(self):
@@ -714,16 +710,18 @@ class Forecasts():
             "MAE Train",
             "MAE Test",
             "RMSE Train",
-            "RMSE Test"
+            "RMSE Test",
         ]
         for performance in self.model_performances:
             # fill the table
-            table.add_row([
-                performance["name"],
-                performance["mae_train"],
-                performance["mae_test"],
-                performance["rmse_train"],
-                performance["rmse_test"],
-            ])
+            table.add_row(
+                [
+                    performance["name"],
+                    performance["mae_train"],
+                    performance["mae_test"],
+                    performance["rmse_train"],
+                    performance["rmse_test"],
+                ]
+            )
 
         print(table.get_string(sortby="MAE Test"))
