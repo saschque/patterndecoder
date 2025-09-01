@@ -1,0 +1,3 @@
+name: Transformer_Example
+architecture: patterndecoder.transformer.TransformerBlock
+attention: patterndecoder.attention.MultiHeadAttention

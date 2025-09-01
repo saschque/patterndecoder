@@ -1,0 +1,3 @@
+name: Autoformer
+architecture: patterndecoder.autoformer.AutoformerBlock
+attention: patterndecoder.attention.AutocorrelationAttention

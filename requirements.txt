@@ -1,0 +1,9 @@
+tensorflow
+numpy
+pandas
+pyyaml
+matplotlib
+prettytable
+yfinance
+statsmodels
+scikit-learn

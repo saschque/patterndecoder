@@ -1,0 +1,3 @@
+name: PatternDecoder_Conv
+architecture: patterndecoder.patterndecoder.PatternDecoderBlock
+attention: patterndecoder.attention.ConvolutionalMultiHeadAttention

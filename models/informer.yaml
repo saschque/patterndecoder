@@ -1,0 +1,3 @@
+name: Informer
+architecture: patterndecoder.informer.InformerBlock
+attention: patterndecoder.attention.ProbSparseAttention

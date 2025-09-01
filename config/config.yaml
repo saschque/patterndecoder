@@ -1,0 +1,42 @@
+#window_params:
+window_size: 30
+forecast_horizon: 1
+n_features: 1
+batch_size: 32
+stride: 1
+shuffle_buffer: 1000
+#training_params:
+learning_rate: 1.0e-04
+epochs: 50
+early_stopping: False
+restore_best: True
+patience: 10
+tmp_weights_file: models/weights/
+dropout: 0.1
+l1_reg: 0.00001
+l2_reg: 0.0001
+metrics:
+- mae
+loss:
+- Huber
+optimizer: tensorflow.keras.optimizers.AdamW
+verbose: False
+training: False
+#transformer_params:
+d_model: 32
+n_heads: 4
+units: 128
+n_layers_enc: 3
+n_layers_dec: 2
+activation: gelu
+#data_params:
+data_path: data/
+ticker: ^GDAXI
+type: csv
+date_column: Date
+columns:
+- Close
+period: 3y
+interval: 1d
+train_split: 0.7
+validation_split: 0.2
