@@ -122,4 +122,4 @@ The models are evaluated based on their Mean Absolute Error (MAE) and Root Mean 
 
 ## License
 
-This project is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 License - see the `LICENSE` file for details.
+This project is licensed under the Apache-2.0 license - see the `LICENSE` file for details.
