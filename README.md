@@ -100,9 +100,9 @@ import tensorflow as tf
 tf.keras.backend.clear_session()
 
 # Load parameters and hyperparameters from config.json
-params = load_config('config/config.yaml')
+params = load_config("config/config.yaml")
 
-# Initialize the Transformer model
+# This approach uses a time-series transformer utilizing full attention
 transformer_model = load_model(params, "models/transformer.yaml")
 
 # Compile and train the model
