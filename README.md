@@ -116,6 +116,10 @@ The models are evaluated based on their Mean Absolute Error (MAE) and Root Mean 
 ## Project Structure
 
 - `setup.py`: Setup file to create the python project package `patterndecoder`
+- `config/`: Directory containing the settings file `config.yaml`
+- `data/`: Directory containing the daily market data
+- `docs/`: Directory containing supporting documentation
+- `models/`: Directory containing the model configs and the weights of the pre-trained models
 - `patterndecoder/`: Directory containing the modules of the package
 - `patterndecoder/attention.py`: Implementation of various attention mechanisms
 - `patterndecoder/embedding.py`: Implementation of various embedding mechanisms
@@ -125,7 +129,6 @@ The models are evaluated based on their Mean Absolute Error (MAE) and Root Mean 
 - `patterndecoder/patterndecoder.py`: Implementation of the PatternDecoder model
 - `patterndecoder/utils.py`: Utility functions for data processing and evaluation
 - `patterndecoder_evaluation_study.ipynb`: Main notebook for the evaluation
-- `data/`: Directory containing the daily market data
 
 ## License
 
