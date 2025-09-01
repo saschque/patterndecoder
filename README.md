@@ -1,7 +1,7 @@
 # Transformer-Based Architectures for Temporal Forecasting: A Study on Financial Time Series Data
 ![Build Status](https://github.com/saschque/patterndecoder/actions/workflows/pylint.yml/badge.svg)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python 3.9](https://img.shields.io/badge/Python-3.10-green.svg)](https://shields.io/)
+[![Python 3.10](https://img.shields.io/badge/Python-3.10-green.svg)](https://shields.io/)
 
 This study examines the effectiveness of transformer-based models for financial time series forecasting, specifically focusing on log returns derived from daily closing prices of the DAX40 index. We propose a decoder-only transformer model specifically designed for immediate-term financial time series forecasting: The PatternDecoder architecture addresses the specific requirements of short-sequence financial forecasting and is evaluated with full, convolutional, and Auto-Correlation attention mechanisms. Various transformer architectures are evaluated alongside for their predictive performance, including the standard Transformer encoder and its specialized variations Informer and Autoformer, that are designed to improve performance on time series data.
 
@@ -59,9 +59,11 @@ For the study, Naive and $ARIMA(0,0,0)$ models were used as baseline to evaluate
 To run the code in this repository, you need to clone the repository and install the package and its dependencies:
 
 ```
-git clone https://github.com/saschque/transformer-ts-forecasting.git
-cd transformer-ts-forecasting
+git clone https://github.com/saschque/patterndecoder.git
+cd patterndecoder
 python setup.py install
+# or
+# make init
 ```
 
 ## Dataset
