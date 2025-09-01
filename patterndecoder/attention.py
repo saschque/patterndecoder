@@ -9,7 +9,7 @@ on efficiency improvements and specialized patterns for temporal data.
 
 Classes:
     MultiHeadAttention: Standard multi-head attention mechanism from "Attention is All You Need".
-    ConvolutionalMultiHeadAttention: Combines 1D convolution with multi-head attention for 
+    ConvolutionalMultiHeadAttention: Combines 1D convolution with multi-head attention for
         local patterns.
     LogSparseAttention: Implements logarithmic sparse attention to reduce complexity.
     ConvLogSparseAttention: Combines convolutional processing with logarithmic sparse attention.
@@ -18,6 +18,7 @@ Classes:
 """
 
 import tensorflow as tf
+
 
 class MultiHeadAttention(tf.keras.layers.Layer):
     """
@@ -35,6 +36,7 @@ class MultiHeadAttention(tf.keras.layers.Layer):
     Methods:
         call(xq, xk, xv, mask=None): Applies multi-head attention.
     """
+
     def __init__(self, d_model, n_heads, **kwargs):
         """
         Initializes the Multi-Head Attention layer.
@@ -70,7 +72,7 @@ class MultiHeadAttention(tf.keras.layers.Layer):
             q (tf.Tensor): Query tensor of shape (..., seq_len_q, depth).
             k (tf.Tensor): Key tensor of shape (..., seq_len_k, depth).
             v (tf.Tensor): Value tensor of shape (..., seq_len_v, depth_v).
-            mask (tf.Tensor or None): Optional mask tensor with shape broadcastable to 
+            mask (tf.Tensor or None): Optional mask tensor with shape broadcastable to
                 (..., seq_len_q, seq_len_k).
 
         Returns:
@@ -100,14 +102,14 @@ class MultiHeadAttention(tf.keras.layers.Layer):
     def _split_heads(self, x, batch_size):
         """
         Splits the input tensor into multiple attention heads.
-        
-        Reshapes the input tensor from (batch_size, seq_len, d_model) to 
+
+        Reshapes the input tensor from (batch_size, seq_len, d_model) to
         (batch_size, n_heads, seq_len, depth) where depth = d_model // n_heads.
-        
+
         Args:
             x (tf.Tensor): Input tensor of shape (batch_size, seq_len, d_model).
             batch_size (int): Batch size dimension.
-            
+
         Returns:
             tf.Tensor: Reshaped tensor of shape (batch_size, n_heads, seq_len, depth).
         """
@@ -118,13 +120,13 @@ class MultiHeadAttention(tf.keras.layers.Layer):
     def build(self, input_shape):
         """
         Initializes the query, key, value, and output projection layers.
-        
+
         Creates dense layers for:
         - wq: Query projection layer (input_dim -> d_model)
-        - wk: Key projection layer (input_dim -> d_model) 
+        - wk: Key projection layer (input_dim -> d_model)
         - wv: Value projection layer (input_dim -> d_model)
         - attention_projection: Final output projection layer (d_model -> d_model)
-        
+
         Args:
             input_shape: Shape of the input tensor.
         """
@@ -137,18 +139,18 @@ class MultiHeadAttention(tf.keras.layers.Layer):
     def call(self, xq, xk, xv, mask=None):
         """
         Applies multi-head attention to the input tensors.
-        
+
         Projects the inputs through query, key, and value transformations,
         splits them into multiple heads, applies scaled dot-product attention,
         and combines the results through a final projection.
-        
+
         Args:
             xq (tf.Tensor): Query tensor of shape (batch_size, seq_len_q, d_model).
             xk (tf.Tensor): Key tensor of shape (batch_size, seq_len_k, d_model).
             xv (tf.Tensor): Value tensor of shape (batch_size, seq_len_v, d_model).
-            mask (tf.Tensor, optional): Attention mask of shape (seq_len, seq_len) or 
+            mask (tf.Tensor, optional): Attention mask of shape (seq_len, seq_len) or
                 (batch_size, seq_len, seq_len). Defaults to None.
-        
+
         Returns:
             tf.Tensor: Output tensor of shape (batch_size, seq_len_q, d_model).
         """
@@ -164,9 +166,12 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 
         scaled_attention, _ = self._scaled_dot_product_attention(q, k, v, mask)
         scaled_attention = tf.transpose(scaled_attention, [0, 2, 1, 3])  # (B, L, H, d)
-        concat = tf.reshape(scaled_attention, (batch_size, -1, self.d_model)) # (B, L, D)
+        concat = tf.reshape(
+            scaled_attention, (batch_size, -1, self.d_model)
+        )  # (B, L, D)
 
         return self.attention_projection(concat)
+
 
 class ConvolutionalMultiHeadAttention(MultiHeadAttention):
     """
@@ -184,11 +189,20 @@ class ConvolutionalMultiHeadAttention(MultiHeadAttention):
         dilation_rate (int): Dilation rate for convolution. Default is 1.
         **kwargs: Additional keyword arguments for the Keras Layer base class.
     """
-    def __init__(self, d_model, n_heads, kernel_size=3, strides=1, padding='causal',
-                 dilation_rate=1, **kwargs):
+
+    def __init__(
+        self,
+        d_model,
+        n_heads,
+        kernel_size=3,
+        strides=1,
+        padding="causal",
+        dilation_rate=1,
+        **kwargs,
+    ):
         """
         Initializes the Convolutional Multi-Head Attention layer.
-        
+
         Args:
             d_model (int): Dimensionality of the input and output.
             n_heads (int): Number of attention heads.
@@ -208,12 +222,12 @@ class ConvolutionalMultiHeadAttention(MultiHeadAttention):
         """
         Initialize 1D convolution and temporal attention components for
         the query, key, and value
-        
+
         Creates Conv1D layers for:
         - wq: Query projection layer (input_dim -> d_model)
-        - wk: Key projection layer (input_dim -> d_model) 
+        - wk: Key projection layer (input_dim -> d_model)
         - wv: Value projection layer (input_dim -> d_model)
-        
+
         Args:
             input_shape: Shape of the input tensor.
         """
@@ -244,6 +258,7 @@ class ConvolutionalMultiHeadAttention(MultiHeadAttention):
             dilation_rate=self.dilation_rate,
         )
 
+
 class LogSparseAttention(MultiHeadAttention):
     """
     Logarithmic Sparse Attention mechanism.
@@ -262,6 +277,7 @@ class LogSparseAttention(MultiHeadAttention):
         create_logsparse_mask(seq_length): Creates a combined local + exponential sparse mask.
         call(xq, xk, xv, mask=None): Applies logarithmic sparse attention.
     """
+
     def create_logsparse_mask(self, seq_length, kernel_size=3):
         """
         Creates a logarithmic sparse mask for attention.
@@ -280,7 +296,7 @@ class LogSparseAttention(MultiHeadAttention):
         """
         i = tf.range(seq_length, dtype=tf.int32)
         j = tf.range(seq_length, dtype=tf.int32)
-        i, j = tf.meshgrid(i, j, indexing='ij')
+        i, j = tf.meshgrid(i, j, indexing="ij")
         d = i - j
 
         # Local window mask
@@ -298,7 +314,7 @@ class LogSparseAttention(MultiHeadAttention):
     def call(self, xq, xk, xv, mask=None):
         """
         Applies logarithmic sparse attention to reduce computational complexity.
-        
+
         Creates a logarithmic sparsity mask and combines it with any provided mask
         to limit attention to local windows and exponentially spaced positions.
 
@@ -325,15 +341,16 @@ class LogSparseAttention(MultiHeadAttention):
 
         return att
 
+
 class ConvLogSparseAttention(LogSparseAttention):
     """
     Convolutional Logarithmic Sparse Attention mechanism.
-    
-    Combines convolutional processing for local pattern extraction with 
+
+    Combines convolutional processing for local pattern extraction with
     logarithmic sparse attention for efficient long-range dependency modeling.
-    This reduces computational complexity while maintaining the ability to 
+    This reduces computational complexity while maintaining the ability to
     capture both local and global temporal patterns.
-    
+
     Args:
         d_model (int): Dimensionality of the input and output.
         n_heads (int): Number of attention heads.
@@ -343,11 +360,20 @@ class ConvLogSparseAttention(LogSparseAttention):
         dilation_rate (int): Dilation rate for convolution. Default is 1.
         **kwargs: Additional keyword arguments for the Keras Layer base class.
     """
-    def __init__(self, d_model, n_heads, kernel_size=3, strides=1, padding='causal',
-                 dilation_rate=1, **kwargs):
+
+    def __init__(
+        self,
+        d_model,
+        n_heads,
+        kernel_size=3,
+        strides=1,
+        padding="causal",
+        dilation_rate=1,
+        **kwargs,
+    ):
         """
         Initializes the Convolutional Logarithmic Sparse Attention layer.
-        
+
         Args:
             d_model (int): Dimensionality of the input and output.
             n_heads (int): Number of attention heads.
@@ -388,11 +414,13 @@ class ConvLogSparseAttention(LogSparseAttention):
             strides=self.strides,
             padding=self.padding,
             dilation_rate=self.dilation_rate,
-            use_bias=False
+            use_bias=False,
         )
 
         # Projection after attention
-        self.attention_projection = tf.keras.layers.Dense(self.attention_filters, use_bias=False)
+        self.attention_projection = tf.keras.layers.Dense(
+            self.attention_filters, use_bias=False
+        )
 
         # Final projection to control output dimensions
         self.final_projection = tf.keras.layers.Dense(self.attention_filters)
@@ -400,20 +428,20 @@ class ConvLogSparseAttention(LogSparseAttention):
     def call(self, xq, xk, xv, mask=None):
         """
         Applies convolutional logarithmic sparse attention.
-        
+
         Processes the query input through both convolutional and attention paths,
         combines them, and applies a final projection.
-        
+
         Args:
             xq (tf.Tensor): Query input tensor of shape (batch_size, seq_len, features).
             xk (tf.Tensor): Key input tensor of shape (batch_size, seq_len, features).
             xv (tf.Tensor): Value input tensor of shape (batch_size, seq_len, features).
             mask (tf.Tensor, optional): Attention mask tensor. Defaults to None.
-            
+
         Returns:
             tf.Tensor: Output tensor with combined convolutional and attention features.
         """
-        #Conv Path
+        # Conv Path
         conv_output = self.conv1d(xq)
 
         # Attention path from parent  class
@@ -427,13 +455,14 @@ class ConvLogSparseAttention(LogSparseAttention):
 
         return output
 
+
 class ProbSparseAttention(MultiHeadAttention):
     """
     ProbSparse Attention mechanism from the Informer model.
-    
-    Reduces attention complexity by selecting only "active" queries based on 
+
+    Reduces attention complexity by selecting only "active" queries based on
     query sparsity measurement, achieving O(L log L) complexity instead of O(L²).
-    
+
     Args:
         d_model (int): Dimensionality of the input and output.
         n_heads (int): Number of attention heads.
@@ -444,7 +473,7 @@ class ProbSparseAttention(MultiHeadAttention):
     def __init__(self, d_model, n_heads, c_factor=5, **kwargs):
         """
         Initializes the ProbSparse Attention layer.
-        
+
         Args:
             d_model (int): Dimensionality of the input and output.
             n_heads (int): Number of attention heads.
@@ -457,11 +486,11 @@ class ProbSparseAttention(MultiHeadAttention):
     def _calculate_query_sparsity(self, q, k):
         """
         Calculate query sparsity measurement efficiently using sampled keys.
-        
+
         Args:
             q: Query tensor (batch_size, n_heads, seq_len_q, d_k)
             k: Key tensor (batch_size, n_heads, seq_len_k, d_k)
-            
+
         Returns:
             sparsity_measurement: Tensor (batch_size, n_heads, seq_len_q)
         """
@@ -478,13 +507,13 @@ class ProbSparseAttention(MultiHeadAttention):
     def _prob_sparse_attention(self, q, k, v, mask=None):
         """
         Implements ProbSparse attention mechanism.
-        
+
         Args:
             q: Query tensor (batch_size, n_heads, seq_len_q, d_k)
-            k: Key tensor (batch_size, n_heads, seq_len_k, d_k)  
+            k: Key tensor (batch_size, n_heads, seq_len_k, d_k)
             v: Value tensor (batch_size, n_heads, seq_len_v, d_v)
             mask: Optional mask tensor
-            
+
         Returns:
             output: Attention output tensor
             attention_weights: Attention weights for selected queries
@@ -497,7 +526,7 @@ class ProbSparseAttention(MultiHeadAttention):
         # Calculate number of active queries to select: c = c_factor * ln(L_Q)
         c = tf.cast(
             tf.math.ceil(self.c_factor * tf.math.log(tf.cast(seq_len_q, tf.float32))),
-            tf.int32
+            tf.int32,
         )
         c = tf.minimum(c, seq_len_q)
 
@@ -518,7 +547,9 @@ class ProbSparseAttention(MultiHeadAttention):
         q_reduced = tf.gather_nd(q, gather_indices)  # (batch_size, n_heads, c, d_k)
 
         # Compute attention scores for selected queries only
-        scores = tf.matmul(q_reduced, k, transpose_b=True) / tf.sqrt(tf.cast(d_k, tf.float32))
+        scores = tf.matmul(q_reduced, k, transpose_b=True) / tf.sqrt(
+            tf.cast(d_k, tf.float32)
+        )
 
         # Apply mask to selected queries if provided
 
@@ -527,16 +558,20 @@ class ProbSparseAttention(MultiHeadAttention):
             mask_expanded = tf.tile(mask_expanded, [batch_size, n_heads, 1, 1])
             # [batch, heads, c, seq_len_k]
             mask_reduced = tf.gather_nd(mask_expanded, gather_indices)
-            scores += (mask_reduced * -1e9)
+            scores += mask_reduced * -1e9
 
         # Apply softmax to get attention weights
         attention_weights = tf.nn.softmax(scores, axis=-1)
 
         # Apply attention to values
-        attended_values = tf.matmul(attention_weights, v)  # (batch_size, n_heads, c, d_k)
+        attended_values = tf.matmul(
+            attention_weights, v
+        )  # (batch_size, n_heads, c, d_k)
 
         # Create output tensor and place attended values at correct positions
-        output = tf.zeros([batch_size, n_heads, seq_len_q, tf.shape(v)[-1]], dtype=v.dtype)
+        output = tf.zeros(
+            [batch_size, n_heads, seq_len_q, tf.shape(v)[-1]], dtype=v.dtype
+        )
 
         # For lazy queries, Initialize with mean of values
         mean_attended = tf.reduce_mean(attended_values, axis=2, keepdims=True)
@@ -551,16 +586,16 @@ class ProbSparseAttention(MultiHeadAttention):
     def call(self, xq, xk, xv, mask=None):
         """
         Applies ProbSparse attention to reduce computational complexity.
-        
+
         Selects active queries based on sparsity measurement and applies attention
         only to these queries, achieving O(L log L) complexity instead of O(L²).
-        
+
         Args:
             xq (tf.Tensor): Query input tensor of shape (batch_size, seq_len, d_model).
             xk (tf.Tensor): Key input tensor of shape (batch_size, seq_len, d_model).
             xv (tf.Tensor): Value input tensor of shape (batch_size, seq_len, d_model).
             mask (tf.Tensor, optional): Attention mask tensor. Defaults to None.
-            
+
         Returns:
             tf.Tensor: Output tensor after applying ProbSparse attention.
         """
@@ -586,6 +621,7 @@ class ProbSparseAttention(MultiHeadAttention):
         # Final linear projection
         return self.attention_projection(concat)
 
+
 class AutocorrelationAttention(MultiHeadAttention):
     """
     AutoCorrelation-based Attention mechanism for time series forecasting.
@@ -607,7 +643,7 @@ class AutocorrelationAttention(MultiHeadAttention):
     def call(self, xq, xk, xv, mask=None):
         """
         Applies auto-correlation-based attention in the frequency domain.
-        
+
         Uses Fast Fourier Transform (FFT) to compute auto-correlation between
         queries and keys, selects top-k correlated positions, and applies
         attention weights to values based on correlation scores.
@@ -616,7 +652,7 @@ class AutocorrelationAttention(MultiHeadAttention):
             xq (tf.Tensor): Query tensor of shape (batch_size, seq_len, d_model).
             xk (tf.Tensor): Key tensor of shape (batch_size, seq_len, d_model).
             xv (tf.Tensor): Value tensor of shape (batch_size, seq_len, d_model).
-            mask (tf.Tensor, optional): Attention mask (currently not used in 
+            mask (tf.Tensor, optional): Attention mask (currently not used in
                 autocorrelation). Defaults to None.
 
         Returns:
@@ -666,7 +702,7 @@ class AutocorrelationAttention(MultiHeadAttention):
         if mask is not None:
             mask_expanded = tf.expand_dims(tf.expand_dims(mask, 0), 0)
             mask_expanded = tf.tile(mask_expanded, [batch_size, self.n_heads, 1, 1])
-            #pass  # Skip masking for now to avoid shape issues
+            # pass  # Skip masking for now to avoid shape issues
 
         # Select top-k correlations for each position
         # scaled_autocorr shape: [batch, heads, seq, depth]
@@ -677,7 +713,7 @@ class AutocorrelationAttention(MultiHeadAttention):
         # Find top correlations across sequence dimension (axis=2)
         top_values, top_indices = tf.math.top_k(
             tf.reduce_mean(scaled_autocorr, axis=-1),  # Average across depth
-            k=top_k
+            k=top_k,
         )
 
         # Gather values based on top indices
@@ -699,14 +735,11 @@ class AutocorrelationAttention(MultiHeadAttention):
         attention_weights = tf.nn.softmax(top_values, axis=-1)  # [batch, heads, top_k]
 
         # Weighted sum: [batch, heads, depth]
-        attended_values = tf.einsum('bhk,bhkd->bhd', attention_weights, v_selected)
+        attended_values = tf.einsum("bhk,bhkd->bhd", attention_weights, v_selected)
 
         # Expand to match original sequence length
         # [batch, heads, depth] -> [batch, heads, seq, depth]
-        output = tf.tile(
-            tf.expand_dims(attended_values, axis=2),
-            [1, 1, seq_len, 1]
-        )
+        output = tf.tile(tf.expand_dims(attended_values, axis=2), [1, 1, seq_len, 1])
 
         # Reshape back to original dimensions
         # [batch, heads, seq, depth] -> [batch, seq, heads, depth]
@@ -735,10 +768,11 @@ class FullAutocorrelationAttention(MultiHeadAttention):
         call(xq, xk, xv, mask=None): Applies the full auto-correlation-based attention
             in the frequency domain.
     """
+
     def call(self, xq, xk, xv, mask=None):
         """
         Applies full auto-correlation-based attention in the frequency domain.
-        
+
         Uses Fast Fourier Transform (FFT) to compute auto-correlation between
         queries and keys, selects top-k correlated positions, and applies
         attention weights to values based on correlation scores.
@@ -747,7 +781,7 @@ class FullAutocorrelationAttention(MultiHeadAttention):
             xq (tf.Tensor): Query tensor of shape (batch_size, seq_len, d_model).
             xk (tf.Tensor): Key tensor of shape (batch_size, seq_len, d_model).
             xv (tf.Tensor): Value tensor of shape (batch_size, seq_len, d_model).
-            mask (tf.Tensor, optional): Attention mask (currently not used in 
+            mask (tf.Tensor, optional): Attention mask (currently not used in
                 autocorrelation). Defaults to None.
 
         Returns:

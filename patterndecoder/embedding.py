@@ -16,13 +16,15 @@ Classes:
 
 import tensorflow as tf
 
+
 class LSTMEmbedding(tf.keras.layers.Layer):
     """
     LSTM-based embedding layer for sequential feature extraction.
-    
-    This layer applies LSTM processing to input sequences to create 
+
+    This layer applies LSTM processing to input sequences to create
     contextual embeddings that capture temporal dependencies.
     """
+
     def __init__(self, d_model, **kwargs):
         """
         Initializes the LSTMEmbedding layer.
@@ -34,9 +36,7 @@ class LSTMEmbedding(tf.keras.layers.Layer):
         super().__init__(**kwargs)
         initializer = tf.keras.initializers.HeNormal()
         self.lstm = tf.keras.layers.LSTM(
-            d_model,
-            kernel_initializer=initializer,
-            return_sequences=True
+            d_model, kernel_initializer=initializer, return_sequences=True
         )
 
     def call(self, inputs):
@@ -51,13 +51,15 @@ class LSTMEmbedding(tf.keras.layers.Layer):
         """
         return self.lstm(inputs)
 
+
 class TokenEmbedding(tf.keras.layers.Layer):
     """
     Convolutional token embedding layer with circular padding.
-    
+
     Applies 1D convolution to input sequences using circular padding to
     preserve sequence length and capture local patterns in the input.
     """
+
     def __init__(self, d_model, **kwargs):
         """
         Initializes the TokenEmbedding layer.
@@ -87,7 +89,7 @@ class TokenEmbedding(tf.keras.layers.Layer):
             filters=self.d_model,
             kernel_size=3,
             kernel_initializer=initializer,
-            padding='valid',  # We'll handle circular padding manually
+            padding="valid",  # We'll handle circular padding manually
         )
 
     def call(self, x):
@@ -114,13 +116,15 @@ class TokenEmbedding(tf.keras.layers.Layer):
 
         return x_conv
 
+
 class SinusoidalPositionalEncoding(tf.keras.layers.Layer):
     """
     Fixed sinusoidal positional encoding for transformer models.
-    
+
     Implements the sinusoidal positional encoding from "Attention Is All You Need"
     that adds position information to embeddings using sine and cosine functions.
     """
+
     def __init__(self, d_model, max_len=5000, **kwargs):
         """
         Initializes the SinusoidalPositionalEncoding layer.
@@ -145,36 +149,40 @@ class SinusoidalPositionalEncoding(tf.keras.layers.Layer):
         # Compute PE once during build
         pe = self._compute_pe(self.max_len, self.d_model)
         self.pe = self.add_weight(
-            name='positional_encoding',
+            name="positional_encoding",
             shape=pe.shape,
-            initializer='zeros',
-            trainable=False
+            initializer="zeros",
+            trainable=False,
         )
         self.pe.assign(pe)
 
     def _compute_pe(self, max_len, d_model):
         """
         Computes sinusoidal positional encodings.
-        
+
         Args:
             max_len (int): Maximum sequence length.
             d_model (int): Model dimensionality.
-            
+
         Returns:
             tf.Tensor: Positional encodings of shape (1, max_len, d_model).
         """
         position = tf.range(max_len, dtype=tf.float32)[:, tf.newaxis]
-        div_term = tf.exp(tf.range(0, d_model, 2, dtype=tf.float32) *
-                         -(tf.math.log(10000.0) / d_model))
+        div_term = tf.exp(
+            tf.range(0, d_model, 2, dtype=tf.float32)
+            * -(tf.math.log(10000.0) / d_model)
+        )
 
         pe = tf.zeros((max_len, d_model))
         pe = tf.tensor_scatter_nd_update(
-            pe, [[i, j] for i in range(max_len) for j in range(0, d_model, 2)],
-            tf.reshape(tf.sin(position * div_term), [-1])
+            pe,
+            [[i, j] for i in range(max_len) for j in range(0, d_model, 2)],
+            tf.reshape(tf.sin(position * div_term), [-1]),
         )
         pe = tf.tensor_scatter_nd_update(
-            pe, [[i, j] for i in range(max_len) for j in range(1, d_model, 2)],
-            tf.reshape(tf.cos(position * div_term[:d_model//2]), [-1])
+            pe,
+            [[i, j] for i in range(max_len) for j in range(1, d_model, 2)],
+            tf.reshape(tf.cos(position * div_term[: d_model // 2]), [-1]),
         )
 
         return pe[tf.newaxis, :, :]  # Add batch dimension
@@ -192,13 +200,15 @@ class SinusoidalPositionalEncoding(tf.keras.layers.Layer):
         seq_len = tf.shape(inputs)[1]
         return inputs + self.pe[:, :seq_len, :]
 
+
 class PositionalEncoding(tf.keras.layers.Layer):
     """
     Learnable positional encoding using embedding layers.
-    
+
     Implements trainable positional embeddings that are learned during training,
     as an alternative to fixed sinusoidal encodings.
     """
+
     def __init__(self, output_dim, input_dim, **kwargs):
         """
         Initializes the PositionalEncoding layer.
@@ -209,8 +219,7 @@ class PositionalEncoding(tf.keras.layers.Layer):
         """
         super().__init__(**kwargs)
         self.position_embeddings = tf.keras.layers.Embedding(
-            input_dim=input_dim,
-            output_dim=output_dim
+            input_dim=input_dim, output_dim=output_dim
         )
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -218,7 +227,7 @@ class PositionalEncoding(tf.keras.layers.Layer):
     def build(self, input_shape):
         """
         Builds the PositionalEncoding layer.
-        
+
         Args:
             input_shape: The shape of the input tensor.
         """
