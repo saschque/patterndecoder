@@ -30,9 +30,9 @@ Functions:
 import importlib
 import yaml
 import numpy as np
+import yfinance as yf
 import tensorflow as tf
 import matplotlib.pyplot as plt
-import yfinance as yf
 import pandas as pd
 from prettytable import PrettyTable
 from statsmodels.tsa.arima.model import ARIMAResultsWrapper
@@ -105,7 +105,6 @@ def get_stock_data(params, download=False):
             auto_adjust=False,
             prepost=True,
             threads=True,
-            proxy=None,
             progress=False,
         )
 
@@ -487,6 +486,7 @@ def get_model_performance(model, params, dataset):
     # For cumulative returns calculation - fix the logic
     # If you want cumulative sum of predictions
     predictions_cum = actuals_df.cumsum() - (actuals_df - predictions_df)
+    preds = actuals_df - (actuals_df - predictions_df)
 
     # Alternative: if you want to calculate cumulative actual values with prediction adjustments
     # actuals_cum = actuals_df.cumsum()

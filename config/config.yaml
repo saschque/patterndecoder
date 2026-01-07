@@ -21,7 +21,7 @@ loss:
   - Huber
 optimizer: tensorflow.keras.optimizers.AdamW
 verbose: False
-training: False
+training: True
 #transformer_params:
 d_model: 32
 n_heads: 4
@@ -31,12 +31,12 @@ n_layers_dec: 2
 activation: gelu
 #data_params:
 data_path: data/
-ticker: ^GDAXI
+ticker: "^GDAXI"
 type: csv
 date_column: Date
 columns:
   - Close
-period: 3y
+period: 5y
 interval: 1d
 train_split: 0.7
 validation_split: 0.2
