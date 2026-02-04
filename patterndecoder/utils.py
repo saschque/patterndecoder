@@ -1,6 +1,6 @@
 # pylint: disable=E1101, R0913, R0903, R0917, R0902, R0801, R0914
 """
-Utilities for dataset handling and preprocessing in machine learning projects.
+Utilities for dataset handling, preprocessing, and model training in machine learning projects.
 
 This module provides functions and classes to facilitate data loading, transformation,
 and preparation for model training and evaluation. It supports various formats and
@@ -8,23 +8,31 @@ frameworks, enabling efficient data management for time series forecasting and o
 
 Key Features:
 - Data loading from sources like CSV, YAML, and Yahoo Finance.
-- Preprocessing techniques such as normalization and feature engineering.
-- Dataset splitting into train/test/validation sets.
-- Sliding window creation for time series data.
+- Configuration management through YAML files.
+- Preprocessing techniques such as calendar feature engineering (dummy and cyclical).
+- Dataset splitting into train/test sets.
+- Sliding window creation for time series data via `WindowedDataset`.
+- Model compilation and training with callbacks (checkpoints, early stopping).
 - Model evaluation metrics (RMSE, MAE).
-- Visualization of model performance.
+- Training history persistence and loading.
+- Visualization of model performance through plots and tables.
 
 Classes:
-- `WindowedDataset`: Generates sliding windows of time series data.
-- `Naive`: Implements a simple naive forecasting model.
-- `Forecasts`: Evaluates and visualizes model performance.
+- `WindowedDataset`: Generates sliding windows of time series data for model training.
+- `Naive`: Implements a simple naive forecasting baseline model.
+- `Forecasts`: Evaluates and visualizes model performance on train/test datasets.
 
 Functions:
-- `get_stock_data`: Downloads historical stock price data from Yahoo Finance.
-- `load_config`: Loads configuration parameters from a YAML file.
-- `train_model`: Compiles and trains a Keras model.
-- `rmse`: Computes Root Mean Squared Error (RMSE).
-- `mae`: Computes Mean Absolute Error (MAE).
+- `get_stock_data()`: Downloads historical stock price data from Yahoo Finance.
+- `load_config()`: Loads configuration parameters from a YAML file.
+- `compile_and_train()`: Compiles and trains a Keras model with callbacks.
+- `get_model_performance()`: Computes metrics (MAE, RMSE) and predictions for a model.
+- `get_rmse()`: Computes Root Mean Squared Error (RMSE).
+- `get_mae()`: Computes Mean Absolute Error (MAE).
+- `add_calendar_dummies()`: Generates one-hot encoded calendar features.
+- `add_cyclical_calendar_features()`: Encodes calendar features as cyclical sine/cosine.
+- `save_training_history()`: Persists training history to disk as JSON.
+- `load_training_history()`: Loads persisted training history from disk.
 """
 
 import importlib
@@ -347,6 +355,33 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
     return history, model
 
 def add_calendar_dummies(df):
+    """
+    Generate calendar dummy variables from a DataFrame's DatetimeIndex.
+    
+    Creates one-hot encoded features for day of week, day of month, and month
+    from the DatetimeIndex of the input DataFrame.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame with a DatetimeIndex.
+    
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with one-hot encoded calendar features (dayofweek, dayofmonth, month).
+    
+    Raises
+    ------
+    ValueError
+        If the DataFrame index is not a DatetimeIndex.
+    
+    Examples
+    --------
+    >>> dates = pd.date_range('2023-01-01', periods=5)
+    >>> df = pd.DataFrame({'value': range(5)}, index=dates)
+    >>> cal_dummies = add_calendar_dummies(df)
+    """
     if not isinstance(df.index, pd.DatetimeIndex):
         raise ValueError("DataFrame index must be a DatetimeIndex")
 
@@ -366,6 +401,31 @@ def add_calendar_dummies(df):
 
 
 def add_cyclical_calendar_features(df):
+    """
+    Add cyclical calendar features to a DataFrame with DatetimeIndex.
+    
+    Encodes temporal information (day of week, day of month, and month of year)
+    as cyclical sine and cosine features to capture the periodic nature of calendar
+    patterns while maintaining mathematical continuity.
+    
+    Args:
+        df (pd.DataFrame): DataFrame with a DatetimeIndex.
+    
+    Returns:
+        pd.DataFrame: DataFrame with cyclical calendar features:
+            - dow_sin, dow_cos: Day of week (0-6) encoded cyclically
+            - dom_sin, dom_cos: Day of month (1-31) encoded cyclically
+            - month_sin, month_cos: Month of year (1-12) encoded cyclically
+    
+    Raises:
+        ValueError: If the DataFrame index is not a DatetimeIndex.
+    
+    Example:
+        >>> df = pd.DataFrame(index=pd.date_range('2023-01-01', periods=3))
+        >>> features = add_cyclical_calendar_features(df)
+        >>> features.shape
+        (3, 6)
+    """
     if not isinstance(df.index, pd.DatetimeIndex):
         raise ValueError("DataFrame index must be a DatetimeIndex")
 
@@ -445,8 +505,8 @@ class WindowedDataset:
         calendar_features = add_cyclical_calendar_features(dataframe)
         base_features = dataframe[self.columns]
 
-        X = pd.concat([base_features, calendar_features], axis=1)
-        X_array = X.values.astype("float32")
+        x = pd.concat([base_features, calendar_features], axis=1)
+        x_array = x.values.astype("float32")
 
         # -------- y (target) --------
         if self.target_column in dataframe.columns:
@@ -458,15 +518,14 @@ class WindowedDataset:
                 f"Target column '{self.target_column}' not found in DataFrame"
             )
 
-
         min_length = self.window_size + self.forecast_horizon
-        if len(X_array) < min_length:
+        if len(x_array) < min_length:
             raise ValueError(
-                f"Need at least {min_length} samples, got {len(X_array)}"
+                f"Need at least {min_length} samples, got {len(x_array)}"
             )
 
         inputs = tf.keras.preprocessing.timeseries_dataset_from_array(
-            data=X_array[:-self.forecast_horizon],
+            data=x_array[:-self.forecast_horizon],
             targets=None,
             sequence_length=self.window_size,
             sequence_stride=self.stride,
@@ -646,7 +705,6 @@ def get_model_performance(model, params, dataset):
     # For cumulative returns calculation - fix the logic
     # If you want cumulative sum of predictions
     predictions_cum = actuals_df.cumsum() - (actuals_df - predictions_df)
-    preds = actuals_df - (actuals_df - predictions_df)
 
     # Alternative: if you want to calculate cumulative actual values with prediction adjustments
     # actuals_cum = actuals_df.cumsum()
