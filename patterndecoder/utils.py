@@ -28,12 +28,15 @@ Functions:
 """
 
 import importlib
-import yaml
-import numpy as np
-import yfinance as yf
-import tensorflow as tf
+import json
+from datetime import datetime
+from pathlib import Path
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+import tensorflow as tf
+import yaml
+import yfinance as yf
 from prettytable import PrettyTable
 from statsmodels.tsa.arima.model import ARIMAResultsWrapper
 
@@ -142,6 +145,114 @@ def split_dataset(dataset, test_ratio=0.30):
     test_indices = np.random.rand(len(dataset)) < test_ratio
     return dataset[~test_indices], dataset[test_indices]
 
+def save_training_history(
+    history,
+    model_name,
+    params,
+    out_dir="training_histories",
+    suffix=None,
+):
+    """
+    Persists a Keras History object to disk as JSON.
+
+    Args:
+        history (tf.keras.callbacks.History): History returned by model.fit
+        model_name (str): Name of the model
+        params (dict): Training/config parameters (stored for reproducibility)
+        out_dir (str): Directory where histories are stored
+        suffix (str): Optional suffix (e.g. run id)
+    """
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    suffix = f"_{suffix}" if suffix else ""
+
+    filename = f"{model_name}_history_{suffix}.json"
+    path = Path(out_dir) / filename
+
+    payload = {
+        "model": model_name,
+        "timestamp": timestamp,
+        "params": {
+            "window_size": params["window_size"],
+            "forecast_horizon": params["forecast_horizon"],
+            "batch_size": params["batch_size"],
+            "optimizer": params["optimizer"],
+            "learning_rate": params["learning_rate"],
+            "loss": params["loss"],
+            "metrics": params["metrics"],
+        },
+        "history": history.history,
+    }
+
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+
+    return path
+
+def load_training_history(
+    model_name,
+    out_dir="training_histories",
+    suffix=None,
+):
+    """
+    Loads a persisted training history saved via `save_training_history`.
+
+    Args:
+        model_name (str): Name of the model
+        out_dir (str): Directory containing saved histories
+        suffix (str | None): Optional suffix used during saving
+
+    Returns:
+        dict: Loaded history payload (params + history)
+    """
+    out_dir = Path(out_dir)
+
+    if suffix is None:
+        pattern = f"{model_name}_history_*.json"
+    else:
+        pattern = f"{model_name}_history__{suffix}.json"
+
+    candidates = sorted(
+        out_dir.glob(pattern),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+
+    if not candidates:
+        raise FileNotFoundError(
+            f"No training history found for model='{model_name}', suffix='{suffix}'"
+        )
+
+    path = candidates[0]
+
+    with open(path, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+
+    return dict_to_history(payload)
+
+
+def dict_to_history(history_dict):
+    """
+    Convert a persisted history dict into a tf.keras.callbacks.History object.
+
+    Args:
+        history_dict (dict): The `history` field loaded from JSON
+                             (metric -> list of values)
+
+    Returns:
+        tf.keras.callbacks.History
+    """
+    history = tf.keras.callbacks.History()
+
+    # Attach history
+    history.history = history_dict["history"]
+
+    # Infer epochs from metric length
+    first_metric = next(iter(history_dict.values()))
+    history.epoch = list(range(len(first_metric)))
+
+    return history
 
 def compile_and_train(model, data, config_path="config/config.yaml"):
     """
@@ -209,7 +320,8 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
     if params["training"] is False:
         model.fit(train_ds, epochs=1, verbose=0)
         model.load_weights(file_path)
-        return None, model
+        history = load_training_history(model_name=model.name,out_dir=params["tmp_history_file"])
+        return history, model
 
     # Train the model
     history = model.fit(
@@ -220,10 +332,61 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
         verbose=params["verbose"],
     )
 
+    # Persist training history in training mode
+    if params["training"] is True:
+        save_training_history(
+            history=history,
+            out_dir=params["tmp_history_file"],
+            model_name=model.name,
+            params=params,
+        )
+
     # Load best weights
     model.load_weights(file_path)
 
     return history, model
+
+def add_calendar_dummies(df):
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise ValueError("DataFrame index must be a DatetimeIndex")
+
+    cal = pd.DataFrame(index=df.index)
+
+    cal["dayofweek"] = df.index.dayofweek   # 0–6
+    cal["dayofmonth"] = df.index.day        # 1–31
+    cal["month"] = df.index.month           # 1–12
+
+    cal = pd.get_dummies(
+        cal,
+        columns=["dayofweek", "dayofmonth", "month"],
+        drop_first=False
+    )
+
+    return cal
+
+
+def add_cyclical_calendar_features(df):
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise ValueError("DataFrame index must be a DatetimeIndex")
+
+    cal = pd.DataFrame(index=df.index)
+
+    # ---- day of week (0–6) ----
+    dow = df.index.dayofweek
+    cal["dow_sin"] = np.sin(2 * np.pi * dow / 7)
+    cal["dow_cos"] = np.cos(2 * np.pi * dow / 7)
+
+    # ---- day of month (1–31) ----
+    dom = df.index.day
+    cal["dom_sin"] = np.sin(2 * np.pi * (dom - 1) / 31)
+    cal["dom_cos"] = np.cos(2 * np.pi * (dom - 1) / 31)
+
+    # ---- month of year (1–12) ----
+    month = df.index.month
+    cal["month_sin"] = np.sin(2 * np.pi * (month - 1) / 12)
+    cal["month_cos"] = np.cos(2 * np.pi * (month - 1) / 12)
+
+    return cal
 
 
 class WindowedDataset:
@@ -271,44 +434,39 @@ class WindowedDataset:
         self.stride = params["stride"]
         self.shuffle_buffer = params["shuffle_buffer"]
         self.columns = params["columns"]
+        self.target_column = params["target_column"]
 
     def __call__(
         self, dataframe, shuffle=False, training_mode=True, multi_horizon=False
     ):
-        """
-        Generates a TensorFlow Dataset of sliding windows from a pandas DataFrame.
-
-        Args:
-            dataframe (pd.DataFrame): Time series data containing features.
-            shuffle (bool): Whether to shuffle the dataset. Default is False.
-            training_mode (bool): Whether to apply training-specific transformations.
-                Default is True.
-            multi_horizon (bool): If True, predict all steps from 1 to forecast_horizon.
-                If False, predict only the value at forecast_horizon steps ahead.
-
-        Returns:
-            tf.data.Dataset: Dataset containing windows with input features (`x`)
-                and future targets (`y`) based on forecast horizon.
-        """
-
-        # Ensure the dataframe is sorted by date
         dataframe = dataframe.sort_index()
 
-        # Extract feature data
-        data_array = dataframe[self.columns].values
+        # -------- X (inputs) --------
+        calendar_features = add_cyclical_calendar_features(dataframe)
+        base_features = dataframe[self.columns]
 
-        # Validate data length
-        min_length = self.window_size + self.forecast_horizon
-        if len(data_array) < min_length:
-            raise ValueError(
-                f"Need at least {min_length} samples, got {len(data_array)}"
+        X = pd.concat([base_features, calendar_features], axis=1)
+        X_array = X.values.astype("float32")
+
+        # -------- y (target) --------
+        if self.target_column in dataframe.columns:
+            y_array = dataframe[self.target_column].values.astype("float32")
+        elif len(dataframe.columns) == 1:
+            y_array = dataframe.iloc[:, 0].values.astype("float32")
+        else:
+            raise KeyError(
+                f"Target column '{self.target_column}' not found in DataFrame"
             )
 
-        # Create input dataset
+
+        min_length = self.window_size + self.forecast_horizon
+        if len(X_array) < min_length:
+            raise ValueError(
+                f"Need at least {min_length} samples, got {len(X_array)}"
+            )
+
         inputs = tf.keras.preprocessing.timeseries_dataset_from_array(
-            data=data_array[
-                : -self.forecast_horizon
-            ],  # Exclude last forecast_horizon samples
+            data=X_array[:-self.forecast_horizon],
             targets=None,
             sequence_length=self.window_size,
             sequence_stride=self.stride,
@@ -316,31 +474,33 @@ class WindowedDataset:
             batch_size=self.batch_size,
         )
 
-        # Predict all steps from t+1 to t+forecast_horizon
-        target_offset = self.window_size + self.forecast_horizon - 1
-        target_seq_length = self.forecast_horizon
+        if multi_horizon:
+            targets = tf.keras.preprocessing.timeseries_dataset_from_array(
+                data=y_array[self.window_size:],
+                targets=None,
+                sequence_length=self.forecast_horizon,
+                sequence_stride=self.stride,
+                shuffle=False,
+                batch_size=self.batch_size,
+            )
+        else:
+            targets = tf.keras.preprocessing.timeseries_dataset_from_array(
+                data=y_array[self.window_size + self.forecast_horizon - 1 :],
+                targets=None,
+                sequence_length=1,
+                sequence_stride=self.stride,
+                shuffle=False,
+                batch_size=self.batch_size,
+            )
 
-        # Create target dataset
-        targets = tf.keras.preprocessing.timeseries_dataset_from_array(
-            data=data_array[target_offset:],
-            targets=None,
-            sequence_length=target_seq_length,
-            sequence_stride=self.stride,
-            shuffle=False,
-            batch_size=self.batch_size,
-        )
-
-        # Combine inputs and targets
         dataset = tf.data.Dataset.zip((inputs, targets))
 
-        # Apply shuffling if requested and in training mode
         if training_mode and shuffle:
             dataset = dataset.shuffle(self.shuffle_buffer)
 
-        # Prefetch for performance
-        dataset = dataset.prefetch(tf.data.AUTOTUNE)
+        return dataset.prefetch(tf.data.AUTOTUNE)
 
-        return dataset
+
 
 
 def get_rmse(test_data, predicted_data):
