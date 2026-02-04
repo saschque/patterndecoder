@@ -12,9 +12,10 @@ early_stopping: False
 restore_best: True
 patience: 10
 tmp_weights_file: models/weights/
+tmp_history_file: models/history/
 dropout: 0.1
-l1_reg: 0.00001
-l2_reg: 0.0001
+l1_reg: 0.000001
+l2_reg: 0.00001
 metrics:
   - mae
 loss:
@@ -36,6 +37,7 @@ type: csv
 date_column: Date
 columns:
   - Close
+target_column: "Close"
 period: 5y
 interval: 1d
 train_split: 0.7
