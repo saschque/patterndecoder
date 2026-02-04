@@ -22,7 +22,7 @@ loss:
   - Huber
 optimizer: tensorflow.keras.optimizers.AdamW
 verbose: False
-training: True
+training: False
 #transformer_params:
 d_model: 32
 n_heads: 4
