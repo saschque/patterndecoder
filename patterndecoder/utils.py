@@ -559,9 +559,6 @@ class WindowedDataset:
 
         return dataset.prefetch(tf.data.AUTOTUNE)
 
-
-
-
 def get_rmse(test_data, predicted_data):
     """
     Computes the Root Mean Squared Error (RMSE) between actual and predicted values.
@@ -592,6 +589,59 @@ def get_mae(test_data, predicted_data):
     mae_value = np.mean(np.abs(test_data - predicted_data))
     return mae_value
 
+class MovingAverage:
+    """
+    Implements a moving average forecasting model that predicts the average
+    of the last `window_size` values of the target column.
+
+    Args:
+        forecast_horizon (int): Number of predictions per sample.
+        window_size (int): Number of historical steps to average over.
+
+    Methods:
+        predict(data, verbose=False):
+            Generates moving average forecasts for all samples in the dataset.
+    """
+
+    def __init__(self, forecast_horizon, window_size):
+        self.name = "MovingAverage"
+        self.forecast_horizon = forecast_horizon
+        self.window_size = window_size
+
+    def predict(self, data, verbose=False):
+        """
+        Generates moving average forecasts for all samples in the dataset.
+
+        Args:
+            data (tf.data.Dataset): Windowed dataset of (X, y) tuples.
+            verbose (bool): Whether to display progress.
+
+        Returns:
+            np.array: Shape (num_samples, forecast_horizon), matching the target.
+        """
+        if verbose:
+            print("MovingAverage Model: Predicting...")
+
+        predictions = []
+
+        for sample in data.unbatch():
+            # Unpack tuple
+            x, _ = sample  # ignore target
+
+            # Convert to numpy if Tensor
+            if hasattr(x, "numpy"):
+                x = x.numpy()
+
+            target_series = x[-self.window_size:, 0]  # log returns are in first column
+
+            # Compute mean over the window
+            window_mean = np.mean(target_series)
+
+            # Repeat for forecast horizon
+            forecast = np.full((self.forecast_horizon,), window_mean)
+            predictions.append(forecast)
+
+        return np.array(predictions)
 
 class Naive:
     """
