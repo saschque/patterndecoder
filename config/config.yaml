@@ -12,9 +12,10 @@ early_stopping: False
 restore_best: True
 patience: 10
 tmp_weights_file: models/weights/
+tmp_history_file: models/history/
 dropout: 0.1
-l1_reg: 0.00001
-l2_reg: 0.0001
+l1_reg: 0.000001
+l2_reg: 0.00001
 metrics:
   - mae
 loss:
@@ -31,12 +32,13 @@ n_layers_dec: 2
 activation: gelu
 #data_params:
 data_path: data/
-ticker: ^GDAXI
+ticker: "^GDAXI"
 type: csv
 date_column: Date
 columns:
   - Close
-period: 3y
+target_column: "Close"
+period: 5y
 interval: 1d
 train_split: 0.7
 validation_split: 0.2
