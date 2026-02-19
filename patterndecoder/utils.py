@@ -1,6 +1,6 @@
 # pylint: disable=E1101, R0913, R0903, R0917, R0902, R0801, R0914
 """
-Utilities for dataset handling and preprocessing in machine learning projects.
+Utilities for dataset handling, preprocessing, and model training in machine learning projects.
 
 This module provides functions and classes to facilitate data loading, transformation,
 and preparation for model training and evaluation. It supports various formats and
@@ -8,32 +8,43 @@ frameworks, enabling efficient data management for time series forecasting and o
 
 Key Features:
 - Data loading from sources like CSV, YAML, and Yahoo Finance.
-- Preprocessing techniques such as normalization and feature engineering.
-- Dataset splitting into train/test/validation sets.
-- Sliding window creation for time series data.
+- Configuration management through YAML files.
+- Preprocessing techniques such as calendar feature engineering (dummy and cyclical).
+- Dataset splitting into train/test sets.
+- Sliding window creation for time series data via `WindowedDataset`.
+- Model compilation and training with callbacks (checkpoints, early stopping).
 - Model evaluation metrics (RMSE, MAE).
-- Visualization of model performance.
+- Training history persistence and loading.
+- Visualization of model performance through plots and tables.
 
 Classes:
-- `WindowedDataset`: Generates sliding windows of time series data.
-- `Naive`: Implements a simple naive forecasting model.
-- `Forecasts`: Evaluates and visualizes model performance.
+- `WindowedDataset`: Generates sliding windows of time series data for model training.
+- `Naive`: Implements a simple naive forecasting baseline model.
+- `Forecasts`: Evaluates and visualizes model performance on train/test datasets.
 
 Functions:
-- `get_stock_data`: Downloads historical stock price data from Yahoo Finance.
-- `load_config`: Loads configuration parameters from a YAML file.
-- `train_model`: Compiles and trains a Keras model.
-- `rmse`: Computes Root Mean Squared Error (RMSE).
-- `mae`: Computes Mean Absolute Error (MAE).
+- `get_stock_data()`: Downloads historical stock price data from Yahoo Finance.
+- `load_config()`: Loads configuration parameters from a YAML file.
+- `compile_and_train()`: Compiles and trains a Keras model with callbacks.
+- `get_model_performance()`: Computes metrics (MAE, RMSE) and predictions for a model.
+- `get_rmse()`: Computes Root Mean Squared Error (RMSE).
+- `get_mae()`: Computes Mean Absolute Error (MAE).
+- `add_calendar_dummies()`: Generates one-hot encoded calendar features.
+- `add_cyclical_calendar_features()`: Encodes calendar features as cyclical sine/cosine.
+- `save_training_history()`: Persists training history to disk as JSON.
+- `load_training_history()`: Loads persisted training history from disk.
 """
 
 import importlib
-import yaml
-import numpy as np
-import tensorflow as tf
+import json
+from datetime import datetime
+from pathlib import Path
 import matplotlib.pyplot as plt
-import yfinance as yf
+import numpy as np
 import pandas as pd
+import tensorflow as tf
+import yaml
+import yfinance as yf
 from prettytable import PrettyTable
 from statsmodels.tsa.arima.model import ARIMAResultsWrapper
 
@@ -105,7 +116,6 @@ def get_stock_data(params, download=False):
             auto_adjust=False,
             prepost=True,
             threads=True,
-            proxy=None,
             progress=False,
         )
 
@@ -143,6 +153,114 @@ def split_dataset(dataset, test_ratio=0.30):
     test_indices = np.random.rand(len(dataset)) < test_ratio
     return dataset[~test_indices], dataset[test_indices]
 
+def save_training_history(
+    history,
+    model_name,
+    params,
+    out_dir="training_histories",
+    suffix=None,
+):
+    """
+    Persists a Keras History object to disk as JSON.
+
+    Args:
+        history (tf.keras.callbacks.History): History returned by model.fit
+        model_name (str): Name of the model
+        params (dict): Training/config parameters (stored for reproducibility)
+        out_dir (str): Directory where histories are stored
+        suffix (str): Optional suffix (e.g. run id)
+    """
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    suffix = f"_{suffix}" if suffix else ""
+
+    filename = f"{model_name}_history_{suffix}.json"
+    path = Path(out_dir) / filename
+
+    payload = {
+        "model": model_name,
+        "timestamp": timestamp,
+        "params": {
+            "window_size": params["window_size"],
+            "forecast_horizon": params["forecast_horizon"],
+            "batch_size": params["batch_size"],
+            "optimizer": params["optimizer"],
+            "learning_rate": params["learning_rate"],
+            "loss": params["loss"],
+            "metrics": params["metrics"],
+        },
+        "history": history.history,
+    }
+
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+
+    return path
+
+def load_training_history(
+    model_name,
+    out_dir="training_histories",
+    suffix=None,
+):
+    """
+    Loads a persisted training history saved via `save_training_history`.
+
+    Args:
+        model_name (str): Name of the model
+        out_dir (str): Directory containing saved histories
+        suffix (str | None): Optional suffix used during saving
+
+    Returns:
+        dict: Loaded history payload (params + history)
+    """
+    out_dir = Path(out_dir)
+
+    if suffix is None:
+        pattern = f"{model_name}_history_*.json"
+    else:
+        pattern = f"{model_name}_history__{suffix}.json"
+
+    candidates = sorted(
+        out_dir.glob(pattern),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+
+    if not candidates:
+        raise FileNotFoundError(
+            f"No training history found for model='{model_name}', suffix='{suffix}'"
+        )
+
+    path = candidates[0]
+
+    with open(path, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+
+    return dict_to_history(payload)
+
+
+def dict_to_history(history_dict):
+    """
+    Convert a persisted history dict into a tf.keras.callbacks.History object.
+
+    Args:
+        history_dict (dict): The `history` field loaded from JSON
+                             (metric -> list of values)
+
+    Returns:
+        tf.keras.callbacks.History
+    """
+    history = tf.keras.callbacks.History()
+
+    # Attach history
+    history.history = history_dict["history"]
+
+    # Infer epochs from metric length
+    first_metric = next(iter(history_dict.values()))
+    history.epoch = list(range(len(first_metric)))
+
+    return history
 
 def compile_and_train(model, data, config_path="config/config.yaml"):
     """
@@ -210,7 +328,8 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
     if params["training"] is False:
         model.fit(train_ds, epochs=1, verbose=0)
         model.load_weights(file_path)
-        return None, model
+        history = load_training_history(model_name=model.name,out_dir=params["tmp_history_file"])
+        return history, model
 
     # Train the model
     history = model.fit(
@@ -221,10 +340,113 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
         verbose=params["verbose"],
     )
 
+    # Persist training history in training mode
+    if params["training"] is True:
+        save_training_history(
+            history=history,
+            out_dir=params["tmp_history_file"],
+            model_name=model.name,
+            params=params,
+        )
+
     # Load best weights
     model.load_weights(file_path)
 
     return history, model
+
+def add_calendar_dummies(df):
+    """
+    Generate calendar dummy variables from a DataFrame's DatetimeIndex.
+    
+    Creates one-hot encoded features for day of week, day of month, and month
+    from the DatetimeIndex of the input DataFrame.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame with a DatetimeIndex.
+    
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with one-hot encoded calendar features (dayofweek, dayofmonth, month).
+    
+    Raises
+    ------
+    ValueError
+        If the DataFrame index is not a DatetimeIndex.
+    
+    Examples
+    --------
+    >>> dates = pd.date_range('2023-01-01', periods=5)
+    >>> df = pd.DataFrame({'value': range(5)}, index=dates)
+    >>> cal_dummies = add_calendar_dummies(df)
+    """
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise ValueError("DataFrame index must be a DatetimeIndex")
+
+    cal = pd.DataFrame(index=df.index)
+
+    cal["dayofweek"] = df.index.dayofweek   # 0–6
+    cal["dayofmonth"] = df.index.day        # 1–31
+    cal["month"] = df.index.month           # 1–12
+
+    cal = pd.get_dummies(
+        cal,
+        columns=["dayofweek", "dayofmonth", "month"],
+        drop_first=False
+    )
+
+    return cal
+
+
+def add_cyclical_calendar_features(df):
+    """
+    Add cyclical calendar features to a DataFrame with DatetimeIndex.
+    
+    Encodes temporal information (day of week, day of month, and month of year)
+    as cyclical sine and cosine features to capture the periodic nature of calendar
+    patterns while maintaining mathematical continuity.
+    
+    Args:
+        df (pd.DataFrame): DataFrame with a DatetimeIndex.
+    
+    Returns:
+        pd.DataFrame: DataFrame with cyclical calendar features:
+            - dow_sin, dow_cos: Day of week (0-6) encoded cyclically
+            - dom_sin, dom_cos: Day of month (1-31) encoded cyclically
+            - month_sin, month_cos: Month of year (1-12) encoded cyclically
+    
+    Raises:
+        ValueError: If the DataFrame index is not a DatetimeIndex.
+    
+    Example:
+        >>> df = pd.DataFrame(index=pd.date_range('2023-01-01', periods=3))
+        >>> features = add_cyclical_calendar_features(df)
+        >>> features.shape
+        (3, 6)
+    """
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise ValueError("DataFrame index must be a DatetimeIndex")
+
+    cal = pd.DataFrame(index=df.index)
+
+    # ---- day of week (0–6) ----
+    dow = df.index.dayofweek
+    cal["dow_sin"] = np.sin(2 * np.pi * dow / 7)
+    cal["dow_cos"] = np.cos(2 * np.pi * dow / 7)
+
+    # ---- day of month (1–31) ----
+    dom = df.index.day
+    cal["dom_sin"] = np.sin(2 * np.pi * (dom - 1) / 31)
+    cal["dom_cos"] = np.cos(2 * np.pi * (dom - 1) / 31)
+
+    # ---- month of year (1–12) ----
+    month = df.index.month
+    cal["month_sin"] = np.sin(2 * np.pi * (month - 1) / 12)
+    cal["month_cos"] = np.cos(2 * np.pi * (month - 1) / 12)
+
+    return cal
 
 
 class WindowedDataset:
@@ -272,44 +494,38 @@ class WindowedDataset:
         self.stride = params["stride"]
         self.shuffle_buffer = params["shuffle_buffer"]
         self.columns = params["columns"]
+        self.target_column = params["target_column"]
 
     def __call__(
         self, dataframe, shuffle=False, training_mode=True, multi_horizon=False
     ):
-        """
-        Generates a TensorFlow Dataset of sliding windows from a pandas DataFrame.
-
-        Args:
-            dataframe (pd.DataFrame): Time series data containing features.
-            shuffle (bool): Whether to shuffle the dataset. Default is False.
-            training_mode (bool): Whether to apply training-specific transformations.
-                Default is True.
-            multi_horizon (bool): If True, predict all steps from 1 to forecast_horizon.
-                If False, predict only the value at forecast_horizon steps ahead.
-
-        Returns:
-            tf.data.Dataset: Dataset containing windows with input features (`x`)
-                and future targets (`y`) based on forecast horizon.
-        """
-
-        # Ensure the dataframe is sorted by date
         dataframe = dataframe.sort_index()
 
-        # Extract feature data
-        data_array = dataframe[self.columns].values
+        # -------- X (inputs) --------
+        calendar_features = add_cyclical_calendar_features(dataframe)
+        base_features = dataframe[self.columns]
 
-        # Validate data length
-        min_length = self.window_size + self.forecast_horizon
-        if len(data_array) < min_length:
-            raise ValueError(
-                f"Need at least {min_length} samples, got {len(data_array)}"
+        x = pd.concat([base_features, calendar_features], axis=1)
+        x_array = x.values.astype("float32")
+
+        # -------- y (target) --------
+        if self.target_column in dataframe.columns:
+            y_array = dataframe[self.target_column].values.astype("float32")
+        elif len(dataframe.columns) == 1:
+            y_array = dataframe.iloc[:, 0].values.astype("float32")
+        else:
+            raise KeyError(
+                f"Target column '{self.target_column}' not found in DataFrame"
             )
 
-        # Create input dataset
+        min_length = self.window_size + self.forecast_horizon
+        if len(x_array) < min_length:
+            raise ValueError(
+                f"Need at least {min_length} samples, got {len(x_array)}"
+            )
+
         inputs = tf.keras.preprocessing.timeseries_dataset_from_array(
-            data=data_array[
-                : -self.forecast_horizon
-            ],  # Exclude last forecast_horizon samples
+            data=x_array[:-self.forecast_horizon],
             targets=None,
             sequence_length=self.window_size,
             sequence_stride=self.stride,
@@ -317,32 +533,31 @@ class WindowedDataset:
             batch_size=self.batch_size,
         )
 
-        # Predict all steps from t+1 to t+forecast_horizon
-        target_offset = self.window_size + self.forecast_horizon - 1
-        target_seq_length = self.forecast_horizon
+        if multi_horizon:
+            targets = tf.keras.preprocessing.timeseries_dataset_from_array(
+                data=y_array[self.window_size:],
+                targets=None,
+                sequence_length=self.forecast_horizon,
+                sequence_stride=self.stride,
+                shuffle=False,
+                batch_size=self.batch_size,
+            )
+        else:
+            targets = tf.keras.preprocessing.timeseries_dataset_from_array(
+                data=y_array[self.window_size + self.forecast_horizon - 1 :],
+                targets=None,
+                sequence_length=1,
+                sequence_stride=self.stride,
+                shuffle=False,
+                batch_size=self.batch_size,
+            )
 
-        # Create target dataset
-        targets = tf.keras.preprocessing.timeseries_dataset_from_array(
-            data=data_array[target_offset:],
-            targets=None,
-            sequence_length=target_seq_length,
-            sequence_stride=self.stride,
-            shuffle=False,
-            batch_size=self.batch_size,
-        )
-
-        # Combine inputs and targets
         dataset = tf.data.Dataset.zip((inputs, targets))
 
-        # Apply shuffling if requested and in training mode
         if training_mode and shuffle:
             dataset = dataset.shuffle(self.shuffle_buffer)
 
-        # Prefetch for performance
-        dataset = dataset.prefetch(tf.data.AUTOTUNE)
-
-        return dataset
-
+        return dataset.prefetch(tf.data.AUTOTUNE)
 
 def get_rmse(test_data, predicted_data):
     """
@@ -374,6 +589,59 @@ def get_mae(test_data, predicted_data):
     mae_value = np.mean(np.abs(test_data - predicted_data))
     return mae_value
 
+class MovingAverage:
+    """
+    Implements a moving average forecasting model that predicts the average
+    of the last `window_size` values of the target column.
+
+    Args:
+        forecast_horizon (int): Number of predictions per sample.
+        window_size (int): Number of historical steps to average over.
+
+    Methods:
+        predict(data, verbose=False):
+            Generates moving average forecasts for all samples in the dataset.
+    """
+
+    def __init__(self, forecast_horizon, window_size):
+        self.name = "MovingAverage"
+        self.forecast_horizon = forecast_horizon
+        self.window_size = window_size
+
+    def predict(self, data, verbose=False):
+        """
+        Generates moving average forecasts for all samples in the dataset.
+
+        Args:
+            data (tf.data.Dataset): Windowed dataset of (X, y) tuples.
+            verbose (bool): Whether to display progress.
+
+        Returns:
+            np.array: Shape (num_samples, forecast_horizon), matching the target.
+        """
+        if verbose:
+            print("MovingAverage Model: Predicting...")
+
+        predictions = []
+
+        for sample in data.unbatch():
+            # Unpack tuple
+            x, _ = sample  # ignore target
+
+            # Convert to numpy if Tensor
+            if hasattr(x, "numpy"):
+                x = x.numpy()
+
+            target_series = x[-self.window_size:, 0]  # log returns are in first column
+
+            # Compute mean over the window
+            window_mean = np.mean(target_series)
+
+            # Repeat for forecast horizon
+            forecast = np.full((self.forecast_horizon,), window_mean)
+            predictions.append(forecast)
+
+        return np.array(predictions)
 
 class Naive:
     """
