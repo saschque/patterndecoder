@@ -25,6 +25,11 @@ from patterndecoder.embedding import DenseTokenEmbedding
 
 
 class DecoderLayerNoCrossAttention(tf.keras.layers.Layer):
+    """
+    A single layer of the decoder without cross-attention.
+
+    """
+
     def __init__(
         self,
         units,
@@ -32,7 +37,6 @@ class DecoderLayerNoCrossAttention(tf.keras.layers.Layer):
         dropout,
         attn_type,
         activation,
-        name="decoder_layer_no_cross_attention",
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -59,7 +63,11 @@ class DecoderLayerNoCrossAttention(tf.keras.layers.Layer):
         self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.dropout1 = tf.keras.layers.Dropout(dropout)
 
-    def call(self, inputs, encoder_outputs=None, training=True):
+    def call(self, inputs, training=True):
+        """
+        Applies the decoder layer without cross-attention.
+
+        """
 
         # Causal self-attention
         seq_len = tf.shape(inputs)[1]
@@ -92,6 +100,14 @@ class DecoderLayerNoCrossAttention(tf.keras.layers.Layer):
 
 
 class DecoderNoCrossAttention(tf.keras.layers.Layer):
+    """
+    Decoder block without cross-attention.
+    This class implements a decoder-only transformer block that processes
+    input sequences through self-attention mechanisms without cross-attention.
+    Attributes:
+        layers (list): A list of DecoderLayerNoCrossAttention instances.
+    """
+
     def __init__(
         self,
         units,
@@ -116,14 +132,22 @@ class DecoderNoCrossAttention(tf.keras.layers.Layer):
             for i in range(n_layers)
         ]
 
-    def call(self, inputs, enc_outputs=None, training=True):
+    def call(self, inputs, training=True):
+        """
+        Applies the decoder block without cross-attention.
+        Args:
+            inputs (tf.Tensor): Input tensor of shape (batch_size, window_size, d_model).
+            training (bool): A boolean indicating whether the layer is in training mode.
+                Defaults to True.
+        Returns:
+            tf.Tensor: Output tensor of shape (batch_size, window_size, d_model).
+        """
 
         outputs = inputs
 
         for layer in self.layers:
             outputs = layer(
                 outputs,
-                encoder_outputs=None,
                 training=training,
             )
 
@@ -435,8 +459,8 @@ class PatternDecoderNoConvBlock(PatternDecoderBlock):
     """
     Decoder-only transformer model for sequence-to-sequence tasks without convolutional embedding.
     This class implements a transformer architecture that bypasses the encoder
-    and utilizes only the decoder block without convolutional embedding. The PatternDecoder processes input
-    sequences through self-attention mechanisms to capture relationships
+    and utilizes only the decoder block without convolutional embedding. The PatternDecoder
+    processes input sequences through self-attention mechanisms to capture relationships
     between elements and generate appropriate output sequences.
 
     Inherits all parameters from PatternDecoderBlock:
@@ -484,7 +508,7 @@ class PatternDecoderNoConvBlock(PatternDecoderBlock):
         embedding = self.token_embedding(inputs)
         embedding = self.encoding(embedding)
         enc = self.lstm_encode(inputs)
-        enc = self.layernorm1(embedding+enc)
+        enc = self.layernorm1(embedding + enc)
 
         # Decoder outputs
         # Output shape: batch_size x window_size x d_model
