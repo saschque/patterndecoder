@@ -133,6 +133,15 @@ class DenseTokenEmbedding(tf.keras.layers.Layer):
         )
 
     def call(self, inputs):
+        """
+        Applies the dense token embedding.
+
+        Args:
+            inputs (tf.Tensor): Input tensor of shape (batch_size, seq_len, input_features).
+
+        Returns:
+            tf.Tensor: Embedded tensor of shape (batch_size, seq_len, d_model).
+        """
         return self.projection(inputs)
 
 
