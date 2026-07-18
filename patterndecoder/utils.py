@@ -153,6 +153,7 @@ def split_dataset(dataset, test_ratio=0.30):
     test_indices = np.random.rand(len(dataset)) < test_ratio
     return dataset[~test_indices], dataset[test_indices]
 
+
 def save_training_history(
     history,
     model_name,
@@ -197,6 +198,7 @@ def save_training_history(
         json.dump(payload, f, indent=2)
 
     return path
+
 
 def load_training_history(
     model_name,
@@ -261,6 +263,7 @@ def dict_to_history(history_dict):
     history.epoch = list(range(len(first_metric)))
 
     return history
+
 
 def compile_and_train(model, data, config_path="config/config.yaml"):
     """
@@ -328,7 +331,9 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
     if params["training"] is False:
         model.fit(train_ds, epochs=1, verbose=0)
         model.load_weights(file_path)
-        history = load_training_history(model_name=model.name,out_dir=params["tmp_history_file"])
+        history = load_training_history(
+            model_name=model.name, out_dir=params["tmp_history_file"]
+        )
         return history, model
 
     # Train the model
@@ -354,28 +359,29 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
 
     return history, model
 
+
 def add_calendar_dummies(df):
     """
     Generate calendar dummy variables from a DataFrame's DatetimeIndex.
-    
+
     Creates one-hot encoded features for day of week, day of month, and month
     from the DatetimeIndex of the input DataFrame.
-    
+
     Parameters
     ----------
     df : pd.DataFrame
         DataFrame with a DatetimeIndex.
-    
+
     Returns
     -------
     pd.DataFrame
         DataFrame with one-hot encoded calendar features (dayofweek, dayofmonth, month).
-    
+
     Raises
     ------
     ValueError
         If the DataFrame index is not a DatetimeIndex.
-    
+
     Examples
     --------
     >>> dates = pd.date_range('2023-01-01', periods=5)
@@ -387,14 +393,12 @@ def add_calendar_dummies(df):
 
     cal = pd.DataFrame(index=df.index)
 
-    cal["dayofweek"] = df.index.dayofweek   # 0–6
-    cal["dayofmonth"] = df.index.day        # 1–31
-    cal["month"] = df.index.month           # 1–12
+    cal["dayofweek"] = df.index.dayofweek  # 0–6
+    cal["dayofmonth"] = df.index.day  # 1–31
+    cal["month"] = df.index.month  # 1–12
 
     cal = pd.get_dummies(
-        cal,
-        columns=["dayofweek", "dayofmonth", "month"],
-        drop_first=False
+        cal, columns=["dayofweek", "dayofmonth", "month"], drop_first=False
     )
 
     return cal
@@ -403,23 +407,23 @@ def add_calendar_dummies(df):
 def add_cyclical_calendar_features(df):
     """
     Add cyclical calendar features to a DataFrame with DatetimeIndex.
-    
+
     Encodes temporal information (day of week, day of month, and month of year)
     as cyclical sine and cosine features to capture the periodic nature of calendar
     patterns while maintaining mathematical continuity.
-    
+
     Args:
         df (pd.DataFrame): DataFrame with a DatetimeIndex.
-    
+
     Returns:
         pd.DataFrame: DataFrame with cyclical calendar features:
             - dow_sin, dow_cos: Day of week (0-6) encoded cyclically
             - dom_sin, dom_cos: Day of month (1-31) encoded cyclically
             - month_sin, month_cos: Month of year (1-12) encoded cyclically
-    
+
     Raises:
         ValueError: If the DataFrame index is not a DatetimeIndex.
-    
+
     Example:
         >>> df = pd.DataFrame(index=pd.date_range('2023-01-01', periods=3))
         >>> features = add_cyclical_calendar_features(df)
@@ -520,12 +524,10 @@ class WindowedDataset:
 
         min_length = self.window_size + self.forecast_horizon
         if len(x_array) < min_length:
-            raise ValueError(
-                f"Need at least {min_length} samples, got {len(x_array)}"
-            )
+            raise ValueError(f"Need at least {min_length} samples, got {len(x_array)}")
 
         inputs = tf.keras.preprocessing.timeseries_dataset_from_array(
-            data=x_array[:-self.forecast_horizon],
+            data=x_array[: -self.forecast_horizon],
             targets=None,
             sequence_length=self.window_size,
             sequence_stride=self.stride,
@@ -535,7 +537,7 @@ class WindowedDataset:
 
         if multi_horizon:
             targets = tf.keras.preprocessing.timeseries_dataset_from_array(
-                data=y_array[self.window_size:],
+                data=y_array[self.window_size :],
                 targets=None,
                 sequence_length=self.forecast_horizon,
                 sequence_stride=self.stride,
@@ -558,6 +560,7 @@ class WindowedDataset:
             dataset = dataset.shuffle(self.shuffle_buffer)
 
         return dataset.prefetch(tf.data.AUTOTUNE)
+
 
 def get_rmse(test_data, predicted_data):
     """
@@ -588,6 +591,7 @@ def get_mae(test_data, predicted_data):
     """
     mae_value = np.mean(np.abs(test_data - predicted_data))
     return mae_value
+
 
 class MovingAverage:
     """
@@ -632,7 +636,7 @@ class MovingAverage:
             if hasattr(x, "numpy"):
                 x = x.numpy()
 
-            target_series = x[-self.window_size:, 0]  # log returns are in first column
+            target_series = x[-self.window_size :, 0]  # log returns are in first column
 
             # Compute mean over the window
             window_mean = np.mean(target_series)
@@ -642,6 +646,7 @@ class MovingAverage:
             predictions.append(forecast)
 
         return np.array(predictions)
+
 
 class Naive:
     """
