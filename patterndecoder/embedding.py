@@ -117,6 +117,34 @@ class TokenEmbedding(tf.keras.layers.Layer):
         return x_conv
 
 
+class DenseTokenEmbedding(tf.keras.layers.Layer):
+    """
+    Dense projection token embedding.
+
+    Ablation variant replacing the convolutional token embedding
+    with a simple linear projection.
+    """
+
+    def __init__(self, d_model, **kwargs):
+        super().__init__(**kwargs)
+
+        self.projection = tf.keras.layers.Dense(
+            units=d_model, kernel_initializer=tf.keras.initializers.HeNormal()
+        )
+
+    def call(self, inputs):
+        """
+        Applies the dense token embedding.
+
+        Args:
+            inputs (tf.Tensor): Input tensor of shape (batch_size, seq_len, input_features).
+
+        Returns:
+            tf.Tensor: Embedded tensor of shape (batch_size, seq_len, d_model).
+        """
+        return self.projection(inputs)
+
+
 class SinusoidalPositionalEncoding(tf.keras.layers.Layer):
     """
     Fixed sinusoidal positional encoding for transformer models.
