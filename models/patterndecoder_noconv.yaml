@@ -1,0 +1,3 @@
+name: PatternDecoderNoConvBlock
+architecture: patterndecoder.patterndecoder.PatternDecoderNoConvBlock
+attention: patterndecoder.attention.MultiHeadAttention
