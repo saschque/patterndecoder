@@ -1,0 +1,3 @@
+name: PatternDecoderBlockNoCrossAttention
+architecture: patterndecoder.patterndecoder.PatternDecoderBlockNoCrossAttention
+attention: patterndecoder.attention.MultiHeadAttention
