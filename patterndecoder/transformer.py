@@ -47,6 +47,33 @@ from patterndecoder.embedding import TokenEmbedding, SinusoidalPositionalEncodin
 from patterndecoder.attention import build_attention
 
 
+def build_ffn(units, d_model, dropout, activation):
+    """
+    Builds the position-wise feed-forward block shared by encoder/decoder layers.
+
+    Used by EncoderLayer, DecoderLayer and DecoderLayerNoCrossAttention so the
+    Conv1D -> Dropout -> Conv1D -> Dropout pattern is defined once instead of
+    being copy-pasted in each layer class.
+
+    Args:
+        units (int): Number of filters in the inner Conv1D (expansion layer).
+        d_model (int): Number of filters in the outer Conv1D (projects back to d_model).
+        dropout (float): Dropout rate applied after each Conv1D.
+        activation (str): Activation function for the inner Conv1D.
+
+    Returns:
+        tf.keras.Sequential: The feed-forward block.
+    """
+    return tf.keras.Sequential(
+        [
+            tf.keras.layers.Conv1D(filters=units, kernel_size=1, activation=activation),
+            tf.keras.layers.Dropout(dropout),
+            tf.keras.layers.Conv1D(filters=d_model, kernel_size=1),
+            tf.keras.layers.Dropout(dropout),
+        ]
+    )
+
+
 class Encoder(tf.keras.layers.Layer):
     """
     Encoder layer for transformer-based models.
@@ -149,19 +176,7 @@ class EncoderLayer(tf.keras.layers.Layer):
         """
         super().__init__(name=name, **kwargs)
         self.self_attention = build_attention(attn_type)
-        self.ffn = tf.keras.Sequential(
-            [
-                tf.keras.layers.Conv1D(
-                    filters=units, kernel_size=1, activation=activation
-                ),
-                tf.keras.layers.Dropout(dropout),
-                tf.keras.layers.Conv1D(
-                    filters=d_model,
-                    kernel_size=1,
-                ),
-                tf.keras.layers.Dropout(dropout),
-            ]
-        )
+        self.ffn = build_ffn(units, d_model, dropout, activation)
         self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.dropout1 = tf.keras.layers.Dropout(dropout)
@@ -285,19 +300,7 @@ class DecoderLayer(tf.keras.layers.Layer):
         super().__init__(name=name, **kwargs)
         self.self_attention = build_attention(attn_type)
         self.encoder_decoder_attention = build_attention(attn_type)
-        self.ffn = tf.keras.Sequential(
-            [
-                tf.keras.layers.Conv1D(
-                    filters=units, kernel_size=1, activation=activation
-                ),
-                tf.keras.layers.Dropout(dropout),
-                tf.keras.layers.Conv1D(
-                    filters=d_model,
-                    kernel_size=1,
-                ),
-                tf.keras.layers.Dropout(dropout),
-            ]
-        )
+        self.ffn = build_ffn(units, d_model, dropout, activation)
         self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.layernorm3 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
