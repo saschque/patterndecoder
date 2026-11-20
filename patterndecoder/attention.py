@@ -774,24 +774,16 @@ class AutocorrelationAttention(MultiHeadAttention):
         k = self._split_heads(k, batch_size)
         v = self._split_heads(v, batch_size)
 
-        depth = tf.shape(q)[-1]
-
-        # Rearrange for FFT: [batch, heads, seq, depth] -> [batch, heads, depth, seq]
-        q_t = tf.transpose(q, [0, 1, 3, 2])
-        k_t = tf.transpose(k, [0, 1, 3, 2])
-
-        # Compute FFT along the last axis (sequence dimension)
-        q_fft = tf.signal.rfft(q_t)
-        k_fft = tf.signal.rfft(k_t)
-
-        # Compute autocorrelation in the frequency domain
-        autocorr_fft = q_fft * tf.math.conj(k_fft)
-        autocorr = tf.signal.irfft(autocorr_fft, fft_length=[seq_len])
+        # Rearrange for FFT ([batch, heads, seq, depth] -> [..., depth, seq]), then
+        # compute FFT along the sequence axis and autocorrelation in frequency domain.
+        q_fft = tf.signal.rfft(tf.transpose(q, [0, 1, 3, 2]))
+        k_fft = tf.signal.rfft(tf.transpose(k, [0, 1, 3, 2]))
+        autocorr = tf.signal.irfft(q_fft * tf.math.conj(k_fft), fft_length=[seq_len])
 
         # Transpose back: [batch, heads, depth, seq] -> [batch, heads, seq, depth]
         autocorr = tf.transpose(autocorr, [0, 1, 3, 2])
         autocorr = autocorr[:, :, :seq_len, :]
-        autocorr = autocorr / tf.math.sqrt(tf.cast(depth, tf.float32))
+        autocorr = autocorr / tf.math.sqrt(tf.cast(tf.shape(q)[-1], tf.float32))
 
         # Per-lag correlation score, averaged over the depth dimension
         autocorr_scores = tf.reduce_mean(autocorr, axis=-1)  # [batch, heads, seq]

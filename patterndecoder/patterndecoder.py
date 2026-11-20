@@ -19,7 +19,7 @@ learn patterns through self-attention without explicit encoder-decoder separatio
 """
 
 import tensorflow as tf
-from patterndecoder.transformer import TransformerBlock
+from patterndecoder.transformer import TransformerBlock, build_ffn
 from patterndecoder.autoformer import AutoDecoder, SeriesDecomp
 from patterndecoder.embedding import DenseTokenEmbedding
 from patterndecoder.attention import build_attention
@@ -48,21 +48,7 @@ class DecoderLayerNoCrossAttention(tf.keras.layers.Layer):
         # fresh, independently-weighted instance for this layer instead.
         self.self_attention = build_attention(attn_type)
 
-        self.ffn = tf.keras.Sequential(
-            [
-                tf.keras.layers.Conv1D(
-                    filters=units,
-                    kernel_size=1,
-                    activation=activation,
-                ),
-                tf.keras.layers.Dropout(dropout),
-                tf.keras.layers.Conv1D(
-                    filters=d_model,
-                    kernel_size=1,
-                ),
-                tf.keras.layers.Dropout(dropout),
-            ]
-        )
+        self.ffn = build_ffn(units, d_model, dropout, activation)
 
         self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
