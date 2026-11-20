@@ -742,7 +742,7 @@ class AutocorrelationAttention(MultiHeadAttention):
 
         return tf.reduce_sum(rolled_stack, axis=0)
 
-    def call(self, xq, xk, xv, mask=None):
+    def call(self, xq, xk, xv, mask=None):  # pylint: disable=unused-argument
         """
         Applies auto-correlation-based attention in the frequency domain.
 
