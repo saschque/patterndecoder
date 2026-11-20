@@ -75,22 +75,14 @@ def load_model(params, path="models/example.yaml"):
         path (str): String representation of the yaml containing model specs.
     Returns:
         object: The class object corresponding to the provided yaml.
-
-    Note:
-        The attention mechanism is passed to the model as a (attention_class, kwargs)
-        specification rather than as an already-instantiated layer. Model code (see
-        patterndecoder.attention.build_attention) constructs a fresh instance per
-        layer/role from this spec, so encoder layers, decoder layers, and the
-        decoder's self-attention/cross-attention no longer silently share weights.
+    Note: attention is passed as a (class, kwargs) spec, not an instance,
+        so each layer/role builds its own via build_attention().
     """
     with open(path, encoding="utf-8") as file:
         model_params = yaml.safe_load(file)
         name = model_params["name"]
-        attn_class = string_to_object(model_params["attention"])
-        attn_spec = (
-            attn_class,
-            {"n_heads": params["n_heads"], "d_model": params["d_model"]},
-        )
+        attn_kwargs = {"n_heads": params["n_heads"], "d_model": params["d_model"]}
+        attn_spec = (string_to_object(model_params["attention"]), attn_kwargs)
         model = string_to_object(model_params["architecture"])(params, attn_spec, name)
     return model
 
