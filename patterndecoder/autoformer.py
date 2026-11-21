@@ -24,6 +24,13 @@ Key Features:
     - Series decomposition to separate trend and seasonal components
     - Fast Fourier Transform for efficient frequency domain computation
     - Progressive decomposition throughout the network layers
+
+Note on attention wiring:
+    AutoEncoderLayer and AutoDecoderLayer subclass the Transformer package's
+    EncoderLayer/DecoderLayer and call their __init__ via super(), so each layer's
+    self-attention (and, for the decoder, cross-attention) is built as its own
+    independent instance via patterndecoder.attention.build_attention rather than
+    sharing weights across layers/roles.
 """
 
 import tensorflow as tf
@@ -80,7 +87,8 @@ class AutoEncoder(tf.keras.layers.Layer):
         d_model (int): The dimensionality of the model.
         dropout (float): The dropout rate.
         n_layers (int): The number of encoder layers.
-        attn_type (tf.keras.layers.Layer): The type of attention mechanism to use
+        attn_type (tuple): (attention_class, kwargs) specification; each layer builds
+            its own independent attention instance.
     Attributes:
         layers (list): A list of AutoEncoderLayer instances.
     """
@@ -104,7 +112,7 @@ class AutoEncoder(tf.keras.layers.Layer):
             d_model (int): The dimensionality of the model.
             dropout (float): The dropout rate.
             n_layers (int): The number of encoder layers.
-            attn_type (tf.keras.layers.Layer): The type of attention mechanism to use.
+            attn_type: (attention_class, kwargs) specification for building attention layers.
             activation (str): Activation function for the feed-forward network.
             kernel_size (int): Kernel size for series decomposition. Default is 5.
             **kwargs: Additional keyword arguments to pass to the parent class.
@@ -158,7 +166,8 @@ class AutoEncoderLayer(TransformerEncoderLayer):
         units: The number of units in the feed-forward network.
         d_model: The dimensionality of the model.
         dropout: The dropout rate.
-        attn_type: The type of attention mechanism to use (AutoCorrelation).
+        attn_type: (attention_class, kwargs) specification (AutoCorrelation recommended);
+            built into its own independent instance by the parent EncoderLayer.
         kernel_size: The kernel size for series decomposition.
         name: The name of the layer.
     """
@@ -181,7 +190,7 @@ class AutoEncoderLayer(TransformerEncoderLayer):
             units (int): The number of units in the feed-forward network.
             d_model (int): The dimensionality of the model.
             dropout (float): The dropout rate.
-            attn_type: The type of attention mechanism to use (AutoCorrelation).
+            attn_type: (attention_class, kwargs) specification (AutoCorrelation recommended).
             activation (str): Activation function for the feed-forward network.
             kernel_size (int): The kernel size for series decomposition. Default is 5.
             name (str): The name of the layer. Default is "autoencoder_layer".
@@ -252,7 +261,8 @@ class AutoDecoder(tf.keras.layers.Layer):
         d_model (int): The dimensionality of the model.
         dropout (float): The dropout rate.
         n_layers (int): The number of decoder layers.
-        attn_type: The type of attention mechanism to use (AutoCorrelation).
+        attn_type: (attention_class, kwargs) specification; each layer builds its own
+            independent self-attention and cross-attention instances.
         activation (str): Activation function for the feed-forward network.
         kernel_size (int): Kernel size for series decomposition. Default is 5.
         **kwargs: Additional keyword arguments for the Keras Layer base class.
@@ -277,7 +287,7 @@ class AutoDecoder(tf.keras.layers.Layer):
             d_model (int): The dimensionality of the model.
             dropout (float): The dropout rate.
             n_layers (int): The number of decoder layers.
-            attn_type: The type of attention mechanism to use (AutoCorrelation).
+            attn_type: (attention_class, kwargs) specification for building attention layers.
             activation (str): Activation function for the feed-forward network.
             kernel_size (int): Kernel size for series decomposition. Default is 5.
             **kwargs: Additional keyword arguments for the Keras Layer base class.
@@ -337,7 +347,9 @@ class AutoDecoderLayer(TransformerDecoderLayer):
         units (int): The number of units in the feed-forward network.
         d_model (int): The dimensionality of the model.
         dropout (float): The dropout rate.
-        attn_type: The type of attention mechanism to use (AutoCorrelation).
+        attn_type: (attention_class, kwargs) specification (AutoCorrelation recommended);
+            the parent DecoderLayer builds independent self-attention and cross-attention
+            instances from it.
         activation (str): Activation function for the feed-forward network. Default is "relu".
         kernel_size (int): Kernel size for series decomposition. Default is 5.
         name (str): The name of the layer. Default is "autodecoder_layer".
@@ -362,7 +374,7 @@ class AutoDecoderLayer(TransformerDecoderLayer):
             units (int): The number of units in the feed-forward network.
             d_model (int): The dimensionality of the model.
             dropout (float): The dropout rate.
-            attn_type: The type of attention mechanism to use (AutoCorrelation).
+            attn_type: (attention_class, kwargs) specification (AutoCorrelation recommended).
             activation (str): Activation function for the feed-forward network. Default is "relu".
             kernel_size (int): Kernel size for series decomposition. Default is 5.
             name (str): The name of the layer. Default is "autodecoder_layer".
@@ -473,12 +485,14 @@ class AutoformerBlock(TransformerBlock):
             - units: Number of units in feed-forward networks
             - n_heads: Number of attention heads
             - n_layers_enc: Number of encoder layers
+            - n_layers_dec: Number of decoder layers
             - activation: Activation function for feed-forward networks
             - dropout: Dropout rate
             - l1_reg: L1 regularization coefficient
             - l2_reg: L2 regularization coefficient
-        attn : Attention mechanism for encoder, decoder and cross attention
-            (AutoCorrelation recommended)
+        attn : (attention_class, kwargs) specification for encoder, decoder and cross
+            attention (AutoCorrelation recommended); each layer/role builds its own
+            independent instance.
 
     Note:
         Uses AutoCorrelation attention and series decomposition throughout
@@ -499,11 +513,13 @@ class AutoformerBlock(TransformerBlock):
             params["activation"],
         )
 
+        # Bugfix: this previously used params["n_layers_enc"], which silently gave
+        # the decoder the same depth as the encoder instead of its configured depth.
         self.decoder = AutoDecoder(
             params["units"],
             params["d_model"],
             params["dropout"],
-            params["n_layers_enc"],
+            params["n_layers_dec"],
             attn,
             params["activation"],
         )

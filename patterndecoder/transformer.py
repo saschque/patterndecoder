@@ -16,6 +16,14 @@ Classes:
         and feed-forward networks.
     TransformerBlock: Complete transformer model combining encoder and decoder with embeddings.
 
+Note on attention wiring:
+    Attention mechanisms are passed around as a (attention_class, kwargs) specification
+    (see patterndecoder.attention.build_attention) rather than as a single shared
+    instance. Every layer/role (each encoder layer, each decoder layer's self-attention,
+    each decoder layer's cross-attention) calls build_attention() to construct its own
+    independently-weighted attention instance. This prevents different layers/roles from
+    unintentionally sharing Q/K/V weights.
+
 Dependencies:
     - transformer_models.embedding: TokenEmbedding and SinusoidalPositionalEncoding
     - Custom attention mechanisms from transformer_models.attention
@@ -25,9 +33,8 @@ Example:
     # Initialize transformer for time series forecasting
     transformer = TransformerBlock(
         params={"batch_size": 32, "window_size": 60, ...},
-        transformer_params={"d_model": 128, "n_heads": 8, ...},
-        training_params={"dropout": 0.1, ...},
-        attn={"enc_attn": attention_layer, "dec_attn": attention_layer}
+        attn=(MultiHeadAttention, {"d_model": 128, "n_heads": 8}),
+        name="transformer",
     )
 
     # Build and compile model
@@ -37,6 +44,34 @@ Example:
 
 import tensorflow as tf
 from patterndecoder.embedding import TokenEmbedding, SinusoidalPositionalEncoding
+from patterndecoder.attention import build_attention
+
+
+def build_ffn(units, d_model, dropout, activation):
+    """
+    Builds the position-wise feed-forward block shared by encoder/decoder layers.
+
+    Used by EncoderLayer, DecoderLayer and DecoderLayerNoCrossAttention so the
+    Conv1D -> Dropout -> Conv1D -> Dropout pattern is defined once instead of
+    being copy-pasted in each layer class.
+
+    Args:
+        units (int): Number of filters in the inner Conv1D (expansion layer).
+        d_model (int): Number of filters in the outer Conv1D (projects back to d_model).
+        dropout (float): Dropout rate applied after each Conv1D.
+        activation (str): Activation function for the inner Conv1D.
+
+    Returns:
+        tf.keras.Sequential: The feed-forward block.
+    """
+    return tf.keras.Sequential(
+        [
+            tf.keras.layers.Conv1D(filters=units, kernel_size=1, activation=activation),
+            tf.keras.layers.Dropout(dropout),
+            tf.keras.layers.Conv1D(filters=d_model, kernel_size=1),
+            tf.keras.layers.Dropout(dropout),
+        ]
+    )
 
 
 class Encoder(tf.keras.layers.Layer):
@@ -52,7 +87,8 @@ class Encoder(tf.keras.layers.Layer):
         d_model (int): The dimensionality of the model.
         dropout (float): The dropout rate.
         n_layers (int): The number of encoder layers.
-        attn_type (tf.keras.layers.Layer): The type of attention mechanism to use.
+        attn_type (tuple): (attention_class, kwargs) specification for building a
+            fresh attention instance per layer.
         **kwargs: Additional keyword arguments to pass to the BaseEncoder.
 
     Attributes:
@@ -72,7 +108,7 @@ class Encoder(tf.keras.layers.Layer):
             units (int): The number of units in the feed-forward network.
             d_model (int): The dimensionality of the model.
             dropout (float): The dropout rate.
-            attn_type: The type of attention mechanism to use.
+            attn_type: (attention_class, kwargs) specification for building attention layers.
             activation (str): Activation function for the feed-forward network.
             name (str): The name of the layer. Default is "encoder_layer".
             **kwargs: Additional keyword arguments for the Keras Layer base class.
@@ -134,28 +170,16 @@ class EncoderLayer(tf.keras.layers.Layer):
             units: The number of units in the feed-forward network.
             d_model: The dimensionality of the model.
             dropout: The dropout rate.
-            attn_type: The type of attention mechanism to use.
+            attn_type: (attention_class, kwargs) specification used to build this
+                layer's own, independently-weighted self-attention instance.
             name: The name of the layer.
         """
-        super().__init__(**kwargs)
-        self.self_attention = attn_type
-        self.ffn = tf.keras.Sequential(
-            [
-                tf.keras.layers.Conv1D(
-                    filters=units, kernel_size=1, activation=activation
-                ),
-                tf.keras.layers.Dropout(dropout),
-                tf.keras.layers.Conv1D(
-                    filters=d_model,
-                    kernel_size=1,
-                ),
-                tf.keras.layers.Dropout(dropout),
-            ]
-        )
+        super().__init__(name=name, **kwargs)
+        self.self_attention = build_attention(attn_type)
+        self.ffn = build_ffn(units, d_model, dropout, activation)
         self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.dropout1 = tf.keras.layers.Dropout(dropout)
-        self.name = name
 
     def call(self, inputs, training=True):
         """
@@ -201,7 +225,7 @@ class Decoder(tf.keras.layers.Layer):
             n_heads (int): The number of attention heads.
             dropout (float): The dropout rate.
             n_layers (int): The number of decoder layers.
-            attn_type: The type of attention mechanism to use.
+            attn_type: (attention_class, kwargs) specification for building attention layers.
             activation (str): Activation function for the feed-forward network.
             **kwargs: Additional keyword arguments for the Keras Layer base class.
         """
@@ -244,6 +268,9 @@ class DecoderLayer(tf.keras.layers.Layer):
     layer normalization, and dropout. The self-attention mechanism in the decoder is typically
     masked to prevent positions from attending to future positions. The encoder-decoder
     attention allows the decoder to focus on relevant parts of the input sequence.
+
+    Self-attention and cross-attention each get their own, independently-weighted
+    attention instance (built via build_attention) rather than sharing one.
     """
 
     def __init__(
@@ -264,28 +291,16 @@ class DecoderLayer(tf.keras.layers.Layer):
             d_model (int): The dimensionality of the model.
             n_heads (int): The number of attention heads.
             dropout (float): The dropout rate.
-            attn_type: The type of self attention mechanism to use.
+            attn_type: (attention_class, kwargs) specification used to build this layer's
+                self-attention and cross-attention instances (each gets its own).
             activation (str): Activation function for the feed-forward network.
             name (str): The name of the layer. Default is "decoder_layer".
             **kwargs: Additional keyword arguments for the Keras Layer base class.
         """
-        super().__init__(**kwargs)
-        self.name = name
-        self.self_attention = attn_type
-        self.encoder_decoder_attention = attn_type
-        self.ffn = tf.keras.Sequential(
-            [
-                tf.keras.layers.Conv1D(
-                    filters=units, kernel_size=1, activation=activation
-                ),
-                tf.keras.layers.Dropout(dropout),
-                tf.keras.layers.Conv1D(
-                    filters=d_model,
-                    kernel_size=1,
-                ),
-                tf.keras.layers.Dropout(dropout),
-            ]
-        )
+        super().__init__(name=name, **kwargs)
+        self.self_attention = build_attention(attn_type)
+        self.encoder_decoder_attention = build_attention(attn_type)
+        self.ffn = build_ffn(units, d_model, dropout, activation)
         self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.layernorm3 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
@@ -356,13 +371,14 @@ class TransformerBlock(tf.keras.Model):
                 - dropout: Dropout rate
                 - l1_reg: L1 regularization coefficient
                 - l2_reg: L2 regularization coefficient
-            attn : Attention mechanism for encoder, decoder and cross attention
+            attn : (attention_class, kwargs) specification. Each encoder layer, and each
+                decoder layer's self-attention and cross-attention, builds its own
+                independent instance from this spec (see build_attention).
             **kwargs: Additional keyword arguments for the Keras Model base class.
         """
-        super().__init__(**kwargs)
+        super().__init__(name=name, **kwargs)
 
         self.params = params
-        self.name = name
         # inputs
         self.inputs = tf.keras.Input(
             shape=(params["batch_size"], params["window_size"], params["n_features"]),
@@ -379,7 +395,8 @@ class TransformerBlock(tf.keras.Model):
         # Layer Normalization for Embedding
         self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
 
-        # Attention Mechanisms
+        # Attention specification (attention_class, kwargs); a fresh instance is
+        # built per layer/role by the Encoder/Decoder below.
         self.attn = attn
         # Encoder
         self.encoder = Encoder(
