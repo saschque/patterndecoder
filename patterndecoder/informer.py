@@ -231,7 +231,11 @@ class InformerBlock(TransformerBlock):
         AutoformerBlock: build the base attributes via super().__init__(), then
         replace self.encoder with the architecture-specific variant. The decoder
         is intentionally left as the plain transformer decoder built by
-        TransformerBlock.__init__, consistent with the Informer paper.
+        TransformerBlock.__init__. This is only partly faithful to the Informer
+        paper: here ``attn`` (ProbSparse) is also used for the decoder's
+        cross-attention, where the paper uses full attention, and the distilling
+        step runs after every encoder layer, whereas the paper distils only
+        between layers.
         """
         super().__init__(params, attn, name, **kwargs)
         self.encoder = Encoder(
