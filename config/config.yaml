@@ -6,28 +6,30 @@ batch_size: 32
 stride: 1
 shuffle_buffer: 1000
 #training_params:
+# loss, learning_rate, dropout, d_model and units were chosen by the validation
+# search in patterndecoder/tuning.py (workflow "Hyperparameter search")
 learning_rate: 1.0e-04
 epochs: 50
-early_stopping: False
+early_stopping: True
 restore_best: True
 patience: 10
 tmp_weights_file: models/weights/
 tmp_history_file: models/history/
-dropout: 0.1
+dropout: 0.3
 l1_reg: 0.000001
 l2_reg: 0.00001
 metrics:
   - mae
 loss:
-  - Huber
+  - mae
 optimizer: tensorflow.keras.optimizers.AdamW
 verbose: False
 seed: 42
 training: True
 #transformer_params:
-d_model: 32
+d_model: 16
 n_heads: 4
-units: 128
+units: 64
 n_layers_enc: 3
 n_layers_dec: 2
 activation: gelu
