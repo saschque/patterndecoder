@@ -357,7 +357,7 @@ class PatternDecoderBlockNoCrossAttention(PatternDecoderBlock):
 
         # Decoder outputs
         # Output shape: batch_size x window_size x d_model
-        dec_outputs = self.decoder(embedding, embedding, training=training)
+        dec_outputs = self.decoder(embedding, training=training)
 
         # Output shape: batch_size x d_model
         return self.ffn(dec_outputs, training=training)
