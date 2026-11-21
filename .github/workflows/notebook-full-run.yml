@@ -1,0 +1,94 @@
+name: Notebook full run
+
+# Retrains all models and executes patterndecoder_evaluation_study.ipynb from
+# top to bottom. Started by hand only (Actions -> "Notebook full run" ->
+# "Run workflow"), because a full run takes several hours on a CPU runner.
+# Nothing is committed back: the executed notebook, the weights and the
+# training histories are attached to the run as an artifact.
+
+on:
+  workflow_dispatch:
+    inputs:
+      epochs:
+        description: "Training epochs per model (config default: 50)"
+        required: true
+        default: "50"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notebook-full-run
+  cancel-in-progress: false
+
+jobs:
+  run-notebook:
+    runs-on: ubuntu-latest
+    # GitHub-hosted runners stop a job after 6 hours; stop a little earlier so
+    # the partial notebook and the weights trained so far are still uploaded.
+    timeout-minutes: 345
+    env:
+      TF_CPP_MIN_LOG_LEVEL: "2"
+      MPLBACKEND: Agg
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt papermill ipykernel
+          python -m ipykernel install --user --name python3
+          pip freeze > pip-freeze.txt
+
+      - name: Configure training run
+        env:
+          EPOCHS: ${{ inputs.epochs }}
+        run: |
+          if ! [[ "$EPOCHS" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::epochs must be a positive integer, got '$EPOCHS'"
+            exit 1
+          fi
+          sed -i -E "s/^epochs:.*/epochs: ${EPOCHS}/; s/^training:.*/training: True/" config/config.yaml
+          grep -E '^(epochs|training):' config/config.yaml
+
+      - name: Execute notebook
+        run: |
+          mkdir -p output
+          papermill patterndecoder_evaluation_study.ipynb \
+            output/patterndecoder_evaluation_study.ipynb \
+            --kernel python3 --cwd . --log-output --progress-bar
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notebook-full-run-${{ github.run_number }}
+          path: |
+            output/patterndecoder_evaluation_study.ipynb
+            models/weights/
+            models/history/
+            config/config.yaml
+            pip-freeze.txt
+          retention-days: 30
+
+      - name: Summary
+        if: always()
+        env:
+          EPOCHS: ${{ inputs.epochs }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          {
+            echo "### Notebook full run"
+            echo "- Commit: \`${COMMIT}\`"
+            echo "- Epochs per model: ${EPOCHS}"
+            echo "- Executed notebook, weights, histories and package versions: artifact \`notebook-full-run-${{ github.run_number }}\`"
+            echo "- Seeds are not fixed, so results differ from run to run."
+          } >> "$GITHUB_STEP_SUMMARY"
