@@ -15,9 +15,42 @@ Classes:
     ConvLogSparseAttention: Combines convolutional processing with logarithmic sparse attention.
     ProbSparseAttention: Probabilistic sparse attention for efficient processing of long sequences.
     AutocorrelationAttention: Frequency-domain attention using auto-correlation for time series.
+    FullAutocorrelationAttention: AutocorrelationAttention variant that aggregates over all
+        lags instead of only the top-k most correlated ones.
+
+Functions:
+    build_attention: Instantiates a fresh attention layer from a (class, kwargs) spec.
+        Used throughout the package instead of passing around a single shared attention
+        instance, so that every attention "slot" (each encoder layer, each decoder layer,
+        decoder self-attention vs. cross-attention, etc.) gets its own independently
+        trainable weights.
 """
 
 import tensorflow as tf
+
+
+def build_attention(attn_spec):
+    """
+    Instantiates a new attention layer from a (attention_class, kwargs) specification.
+
+    Model code should call this every time it needs an attention "slot" (one per
+    encoder layer, one per decoder self-attention, one per decoder cross-attention,
+    and so on) rather than reusing a single attention instance across multiple
+    layers/roles. Reusing one instance means those layers/roles would literally
+    share the same Q/K/V weight matrices, which silently reduces model capacity
+    and undermines architecture comparisons between attention variants.
+
+    Args:
+        attn_spec (tuple): A tuple of (attention_class, kwargs_dict), where
+            attention_class is an attention Layer subclass (e.g. MultiHeadAttention)
+            and kwargs_dict contains its constructor arguments (e.g. d_model, n_heads).
+
+    Returns:
+        tf.keras.layers.Layer: A freshly constructed, independently-weighted
+            attention layer instance.
+    """
+    attn_class, attn_kwargs = attn_spec
+    return attn_class(**attn_kwargs)
 
 
 class MultiHeadAttention(tf.keras.layers.Layer):
@@ -50,7 +83,8 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         self.n_heads = n_heads
         self.d_model = d_model
         # Ensure attention_filters is divisible by n_heads
-        assert d_model % n_heads == 0, "attention_filters must be divisible by n_heads"
+        if d_model % n_heads != 0:
+            raise ValueError("attention_filters must be divisible by n_heads")
         self.depth = d_model // n_heads
 
         # Layer components
@@ -68,12 +102,15 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         a softmax function to generate attention weights. These weights are then used to compute
         a weighted sum of the values.
 
+        Note on mask convention: a value of 1 means the position is BLOCKED
+        (masked out); a value of 0 means the position is allowed to be attended to.
+
         Args:
             q (tf.Tensor): Query tensor of shape (..., seq_len_q, depth).
             k (tf.Tensor): Key tensor of shape (..., seq_len_k, depth).
             v (tf.Tensor): Value tensor of shape (..., seq_len_v, depth_v).
             mask (tf.Tensor or None): Optional mask tensor with shape broadcastable to
-                (..., seq_len_q, seq_len_k).
+                (..., seq_len_q, seq_len_k). 1 = blocked, 0 = allowed.
 
         Returns:
             tf.Tensor: The output tensor after applying attention.
@@ -286,13 +323,17 @@ class LogSparseAttention(MultiHeadAttention):
         exponentially spaced connections, allowing for efficient capture of both local
         and long-range dependencies.
 
+        Mask convention: 1 = blocked (masked out), 0 = allowed. This matches the
+        convention used by MultiHeadAttention._scaled_dot_product_attention, so this
+        mask can be combined with other masks (e.g. a causal mask) via tf.maximum.
+
         Args:
             seq_length (int): Length of the input sequence.
             kernel_size (int): Size of the local attention window. Default is 3.
 
         Returns:
             tf.Tensor: Logarithmic sparse mask of shape (seq_length, seq_length)
-                where 1.0 indicates allowed attention and 0.0 indicates blocked attention.
+                where 1.0 indicates blocked attention and 0.0 indicates allowed attention.
         """
         i = tf.range(seq_length, dtype=tf.int32)
         j = tf.range(seq_length, dtype=tf.int32)
@@ -306,10 +347,14 @@ class LogSparseAttention(MultiHeadAttention):
         is_power_of_two = (d > 0) & (tf.bitwise.bitwise_and(d, d - 1) == 0)
         exp_mask = is_power_of_two | (d == 0)
 
-        # Combine masks and ensure causality
-        combined_mask = (local_mask | exp_mask) & (d >= 0)
+        # Positions that are allowed: causal (d >= 0) AND (local window OR exponential lag)
+        allowed_mask = (local_mask | exp_mask) & (d >= 0)
 
-        return tf.cast(combined_mask, tf.float32)
+        # Convert to "1 = blocked" convention: future positions (d < 0) are blocked,
+        # and past positions outside the local/exponential pattern are blocked too.
+        blocked_mask = 1.0 - tf.cast(allowed_mask, tf.float32)
+
+        return blocked_mask
 
     def call(self, xq, xk, xv, mask=None):
         """
@@ -322,7 +367,8 @@ class LogSparseAttention(MultiHeadAttention):
             xq (tf.Tensor): Query tensor of shape (batch_size, seq_len, d_model).
             xk (tf.Tensor): Key tensor of shape (batch_size, seq_len, d_model).
             xv (tf.Tensor): Value tensor of shape (batch_size, seq_len, d_model).
-            mask (tf.Tensor, optional): Additional attention mask. Defaults to None.
+            mask (tf.Tensor, optional): Additional attention mask (1=blocked, 0=allowed).
+                Defaults to None.
 
         Returns:
             tf.Tensor: Output tensor after applying logarithmic sparse attention.
@@ -330,7 +376,7 @@ class LogSparseAttention(MultiHeadAttention):
         seq_len = tf.shape(xq)[1]
         log_mask = self.create_logsparse_mask(seq_len)
         if mask is not None:
-            # Both masks: 0=allowed, 1=blocked
+            # Both masks: 1=blocked, 0=allowed
             # Use maximum to block positions blocked by either mask
             combined_mask = tf.maximum(mask, log_mask)
         else:
@@ -393,7 +439,8 @@ class ConvLogSparseAttention(LogSparseAttention):
         self.dilation_rate = dilation_rate
 
         # Ensure attention_filters is divisible by n_heads
-        assert d_model % n_heads == 0, "attention_filters must be divisible by n_heads"
+        if d_model % n_heads != 0:
+            raise ValueError("attention_filters must be divisible by n_heads")
         self.depth = d_model // n_heads
 
         # Layer components
@@ -627,8 +674,12 @@ class AutocorrelationAttention(MultiHeadAttention):
     AutoCorrelation-based Attention mechanism for time series forecasting.
 
     This layer replaces traditional self-attention with an auto-correlation mechanism,
-    which captures time-delay dependencies in the frequency domain using FFT. It is
-    effective for periodic or seasonal time series data.
+    which captures time-delay dependencies in the frequency domain using FFT. Instead
+    of collapsing the sequence into a single aggregated vector, it performs a proper
+    time-delay aggregation: it identifies the top-k most correlated lags (time delays)
+    and reconstructs each output position as a weighted sum of the value sequence
+    rolled by those lags. This preserves per-position (per-timestep) information,
+    unlike naively averaging over the whole sequence.
 
     Args:
         d_model (int): Dimensionality of the input and output.
@@ -640,23 +691,75 @@ class AutocorrelationAttention(MultiHeadAttention):
             in the frequency domain.
     """
 
-    def call(self, xq, xk, xv, mask=None):
+    def _get_top_k(self, seq_len):
+        """
+        Determines how many top-correlated lags to aggregate over.
+
+        Args:
+            seq_len (tf.Tensor): The (dynamic) sequence length.
+
+        Returns:
+            tf.Tensor: Scalar int32 tensor, number of lags to use.
+        """
+        return tf.maximum(seq_len // 5, 1)
+
+    def _time_delay_agg(self, v, autocorr_scores, top_k):
+        """
+        Aggregates the value sequence across its top-k most correlated lags.
+
+        For each selected lag tau, the value sequence is circularly shifted (rolled)
+        by tau positions and weighted by the softmax-normalized correlation score for
+        that lag. The weighted, shifted sequences are then summed. Because this is a
+        per-position roll rather than a pooled aggregate, the output retains distinct
+        values at each sequence position (unlike averaging over the whole sequence).
+
+        Args:
+            v (tf.Tensor): Value tensor of shape (batch, heads, seq, depth).
+            autocorr_scores (tf.Tensor): Per-lag correlation scores of shape
+                (batch, heads, seq), averaged over the depth dimension.
+            top_k (tf.Tensor): Scalar int32 tensor, number of lags to aggregate.
+
+        Returns:
+            tf.Tensor: Aggregated tensor of shape (batch, heads, seq, depth).
+        """
+        # Average correlation scores across batch and heads to select a shared
+        # set of lags, as in the original Autoformer time-delay aggregation.
+        mean_scores = tf.reduce_mean(autocorr_scores, axis=[0, 1])  # [seq]
+        top_values, top_lags = tf.math.top_k(mean_scores, k=top_k)  # [top_k]
+        weights = tf.nn.softmax(top_values, axis=-1)  # [top_k]
+
+        def roll_and_weight(i):
+            lag = top_lags[i]
+            weight = weights[i]
+            rolled = tf.roll(v, shift=lag, axis=2)  # [batch, heads, seq, depth]
+            return rolled * weight
+
+        rolled_stack = tf.map_fn(
+            roll_and_weight,
+            tf.range(top_k),
+            fn_output_signature=tf.float32,
+        )  # [top_k, batch, heads, seq, depth]
+
+        return tf.reduce_sum(rolled_stack, axis=0)
+
+    def call(self, xq, xk, xv, mask=None):  # pylint: disable=unused-argument
         """
         Applies auto-correlation-based attention in the frequency domain.
 
         Uses Fast Fourier Transform (FFT) to compute auto-correlation between
-        queries and keys, selects top-k correlated positions, and applies
-        attention weights to values based on correlation scores.
+        queries and keys, selects the top-k most correlated lags, and reconstructs
+        the output sequence via a weighted, lag-shifted aggregation of the values.
 
         Args:
             xq (tf.Tensor): Query tensor of shape (batch_size, seq_len, d_model).
             xk (tf.Tensor): Key tensor of shape (batch_size, seq_len, d_model).
             xv (tf.Tensor): Value tensor of shape (batch_size, seq_len, d_model).
-            mask (tf.Tensor, optional): Attention mask (currently not used in
-                autocorrelation). Defaults to None.
+            mask (tf.Tensor, optional): Attention mask (not used in autocorrelation,
+                which is inherently non-causal within the window). Defaults to None.
 
         Returns:
-            tf.Tensor: Output tensor after applying autocorrelation-based attention.
+            tf.Tensor: Output tensor after applying autocorrelation-based attention,
+                of shape (batch_size, seq_len, d_model).
         """
         batch_size = tf.shape(xq)[0]
         seq_len = tf.shape(xq)[1]
@@ -671,93 +774,39 @@ class AutocorrelationAttention(MultiHeadAttention):
         k = self._split_heads(k, batch_size)
         v = self._split_heads(v, batch_size)
 
-        # Get dimensions for later use
-        depth = tf.shape(q)[-1]
-
-        # Rearrange for FFT: [batch, heads, seq, depth] -> [batch, heads, depth, seq]
-        q_t = tf.transpose(q, [0, 1, 3, 2])
-        k_t = tf.transpose(k, [0, 1, 3, 2])
-
-        # Compute FFT along the last axis (sequence dimension)
-        q_fft = tf.signal.rfft(q_t)  # Complex tensor
-        k_fft = tf.signal.rfft(k_t)  # Complex tensor
-
-        # Compute autocorrelation in the frequency domain
-        # Shape: [batch, heads, depth, fft_length]
-        autocorr_fft = q_fft * tf.math.conj(k_fft)
-
-        # Inverse FFT to get autocorrelation - specify exact output length
-        autocorr = tf.signal.irfft(autocorr_fft, fft_length=[seq_len])
+        # Rearrange for FFT ([batch, heads, seq, depth] -> [..., depth, seq]), then
+        # compute FFT along the sequence axis and autocorrelation in frequency domain.
+        q_fft = tf.signal.rfft(tf.transpose(q, [0, 1, 3, 2]))
+        k_fft = tf.signal.rfft(tf.transpose(k, [0, 1, 3, 2]))
+        autocorr = tf.signal.irfft(q_fft * tf.math.conj(k_fft), fft_length=[seq_len])
 
         # Transpose back: [batch, heads, depth, seq] -> [batch, heads, seq, depth]
         autocorr = tf.transpose(autocorr, [0, 1, 3, 2])
-
-        # Ensure we only take the first seq_len elements
         autocorr = autocorr[:, :, :seq_len, :]
+        autocorr = autocorr / tf.math.sqrt(tf.cast(tf.shape(q)[-1], tf.float32))
 
-        # Scale autocorrelation
-        scaled_autocorr = autocorr / tf.math.sqrt(tf.cast(depth, tf.float32))
+        # Per-lag correlation score, averaged over the depth dimension
+        autocorr_scores = tf.reduce_mean(autocorr, axis=-1)  # [batch, heads, seq]
 
-        # Apply mask if provided
-        if mask is not None:
-            mask_expanded = tf.expand_dims(tf.expand_dims(mask, 0), 0)
-            mask_expanded = tf.tile(mask_expanded, [batch_size, self.n_heads, 1, 1])
-            # pass  # Skip masking for now to avoid shape issues
-
-        # Select top-k correlations for each position
-        # scaled_autocorr shape: [batch, heads, seq, depth]
-        autocorr_seq_len = tf.shape(scaled_autocorr)[2]
-        top_k = tf.maximum(autocorr_seq_len // 5, 1)
-        top_k = tf.minimum(top_k, autocorr_seq_len)
-
-        # Find top correlations across sequence dimension (axis=2)
-        top_values, top_indices = tf.math.top_k(
-            tf.reduce_mean(scaled_autocorr, axis=-1),  # Average across depth
-            k=top_k,
-        )
-
-        # Gather values based on top indices
-        # top_indices shape: [batch, heads, top_k]
-        # v shape: [batch, heads, seq, depth]
-
-        # Create proper indices for gathering
-        batch_idx = tf.range(batch_size)[:, None, None]
-        head_idx = tf.range(self.n_heads)[None, :, None]
-        batch_idx = tf.tile(batch_idx, [1, self.n_heads, top_k])
-        head_idx = tf.tile(head_idx, [batch_size, 1, top_k])
-
-        gather_indices = tf.stack([batch_idx, head_idx, top_indices], axis=-1)
-
-        # Gather values: [batch, heads, top_k, depth]
-        v_selected = tf.gather_nd(v, gather_indices)
-
-        # Compute attention weights and weighted sum
-        attention_weights = tf.nn.softmax(top_values, axis=-1)  # [batch, heads, top_k]
-
-        # Weighted sum: [batch, heads, depth]
-        attended_values = tf.einsum("bhk,bhkd->bhd", attention_weights, v_selected)
-
-        # Expand to match original sequence length
-        # [batch, heads, depth] -> [batch, heads, seq, depth]
-        output = tf.tile(tf.expand_dims(attended_values, axis=2), [1, 1, seq_len, 1])
+        top_k = self._get_top_k(seq_len)
+        output = self._time_delay_agg(v, autocorr_scores, top_k)  # [batch, heads, seq, depth]
 
         # Reshape back to original dimensions
-        # [batch, heads, seq, depth] -> [batch, seq, heads, depth]
-        output = tf.transpose(output, [0, 2, 1, 3])
-
-        # [batch, seq, heads, depth] -> [batch, seq, d_model]
+        output = tf.transpose(output, [0, 2, 1, 3])  # [batch, seq, heads, depth]
         output = tf.reshape(output, [batch_size, seq_len, self.d_model])
 
         # Final projection
         return self.attention_projection(output)
 
 
-class FullAutocorrelationAttention(MultiHeadAttention):
+class FullAutocorrelationAttention(AutocorrelationAttention):
     """
     Full AutoCorrelation-based Attention mechanism for time series forecasting.
 
-    This layer replaces traditional self-attention with an auto-correlation mechanism,
-    which captures time-delay dependencies in the frequency domain using FFT.
+    Identical to AutocorrelationAttention's time-delay aggregation, except it
+    aggregates over *all* lags instead of only the top-k most correlated ones
+    (top_k == seq_len). This is more expensive but does not discard any
+    correlation information.
 
     Args:
         d_model (int): Dimensionality of the input and output.
@@ -769,65 +818,14 @@ class FullAutocorrelationAttention(MultiHeadAttention):
             in the frequency domain.
     """
 
-    def call(self, xq, xk, xv, mask=None):
+    def _get_top_k(self, seq_len):
         """
-        Applies full auto-correlation-based attention in the frequency domain.
-
-        Uses Fast Fourier Transform (FFT) to compute auto-correlation between
-        queries and keys, selects top-k correlated positions, and applies
-        attention weights to values based on correlation scores.
+        Uses every lag (full aggregation) instead of a top-k subset.
 
         Args:
-            xq (tf.Tensor): Query tensor of shape (batch_size, seq_len, d_model).
-            xk (tf.Tensor): Key tensor of shape (batch_size, seq_len, d_model).
-            xv (tf.Tensor): Value tensor of shape (batch_size, seq_len, d_model).
-            mask (tf.Tensor, optional): Attention mask (currently not used in
-                autocorrelation). Defaults to None.
+            seq_len (tf.Tensor): The (dynamic) sequence length.
 
         Returns:
-            tf.Tensor: Output tensor after applying autocorrelation-based attention.
+            tf.Tensor: Scalar int32 tensor equal to seq_len.
         """
-        batch_size = tf.shape(xq)[0]
-        seq_len = tf.shape(xq)[1]
-
-        # Project inputs
-        q = self.wq(xq)
-        k = self.wk(xk)
-        v = self.wv(xv)
-
-        # Split into multiple heads
-        q = self._split_heads(q, batch_size)  # [batch, heads, seq, depth]
-        k = self._split_heads(k, batch_size)
-        v = self._split_heads(v, batch_size)
-
-        # Compute autocorrelation in frequency domain
-        q_t = tf.transpose(q, [0, 1, 3, 2])  # [batch, heads, depth, seq]
-        k_t = tf.transpose(k, [0, 1, 3, 2])
-
-        q_fft = tf.signal.rfft(q_t)
-        k_fft = tf.signal.rfft(k_t)
-        autocorr_fft = q_fft * tf.math.conj(k_fft)
-        autocorr = tf.signal.irfft(autocorr_fft, fft_length=[seq_len])
-        autocorr = tf.transpose(autocorr, [0, 1, 3, 2])  # [batch, heads, seq, depth]
-
-        # Attention weights computation (fixed shape handling)
-        scaled_autocorr = autocorr / tf.math.sqrt(tf.cast(tf.shape(q)[-1], tf.float32))
-        # [batch, heads, seq]
-        autocorr_scores = tf.reduce_mean(scaled_autocorr, axis=-1)
-        attention_weights = tf.nn.softmax(autocorr_scores, axis=-1)
-
-        # Apply attention weights directly (avoiding problematic FFT aggregation)
-        # Shape-safe implementation
-        # [batch, heads, seq, 1]
-        attention_weights_expanded = tf.expand_dims(attention_weights, axis=-1)
-        attended_values = v * attention_weights_expanded  # [batch, heads, seq, depth]
-
-        # Sum over sequence dimension for aggregation
-        # [batch, heads, 1, depth]
-        output = tf.reduce_sum(attended_values, axis=2, keepdims=True)
-        output = tf.tile(output, [1, 1, seq_len, 1])  # [batch, heads, seq, depth]
-
-        # Reshape and project
-        output = tf.transpose(output, [0, 2, 1, 3])  # [batch, seq, heads, depth]
-        output = tf.reshape(output, [batch_size, seq_len, self.d_model])
-        return self.attention_projection(output)
+        return seq_len

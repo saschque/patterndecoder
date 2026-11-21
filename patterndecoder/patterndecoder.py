@@ -19,9 +19,10 @@ learn patterns through self-attention without explicit encoder-decoder separatio
 """
 
 import tensorflow as tf
-from patterndecoder.transformer import TransformerBlock
+from patterndecoder.transformer import TransformerBlock, build_ffn
 from patterndecoder.autoformer import AutoDecoder, SeriesDecomp
 from patterndecoder.embedding import DenseTokenEmbedding
+from patterndecoder.attention import build_attention
 
 
 class DecoderLayerNoCrossAttention(tf.keras.layers.Layer):
@@ -41,23 +42,13 @@ class DecoderLayerNoCrossAttention(tf.keras.layers.Layer):
     ):
         super().__init__(**kwargs)
 
-        self.self_attention = attn_type
+        # Bugfix: previously this assigned the shared attn_type instance directly
+        # (self.self_attention = attn_type), meaning every layer in the stack
+        # reused the exact same Q/K/V weights. build_attention() constructs a
+        # fresh, independently-weighted instance for this layer instead.
+        self.self_attention = build_attention(attn_type)
 
-        self.ffn = tf.keras.Sequential(
-            [
-                tf.keras.layers.Conv1D(
-                    filters=units,
-                    kernel_size=1,
-                    activation=activation,
-                ),
-                tf.keras.layers.Dropout(dropout),
-                tf.keras.layers.Conv1D(
-                    filters=d_model,
-                    kernel_size=1,
-                ),
-                tf.keras.layers.Dropout(dropout),
-            ]
-        )
+        self.ffn = build_ffn(units, d_model, dropout, activation)
 
         self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
@@ -212,7 +203,8 @@ class PatternDecoderBlock(TransformerBlock):
             - dropout: Dropout rate
             - l1_reg: L1 regularization coefficient
             - l2_reg: L2 regularization coefficient
-        attn : Attention mechanism for encoder, decoder and cross attention
+        attn : (attention_class, kwargs) specification for encoder, decoder and cross
+            attention. Each layer/role builds its own independent instance.
 
     Note:
         Uses only the decoder component, making it suitable for tasks where
@@ -238,7 +230,7 @@ class PatternDecoderBlock(TransformerBlock):
                 - dropout: Dropout rate
                 - l1_reg: L1 regularization coefficient
                 - l2_reg: L2 regularization coefficient
-            attn: Attention mechanism for decoder and cross attention
+            attn: (attention_class, kwargs) specification for decoder and cross attention
             **kwargs: Additional keyword arguments for the Keras Model base class.
         """
         super().__init__(params, attn, name, **kwargs)
@@ -302,7 +294,7 @@ class PatternDecoderBlockNoCrossAttention(PatternDecoderBlock):
             - dropout: Dropout rate
             - l1_reg: L1 regularization coefficient
             - l2_reg: L2 regularization coefficient
-        attn : Attention mechanism for encoder, decoder and cross attention
+        attn : (attention_class, kwargs) specification for encoder, decoder and cross attention
     """
 
     def __init__(self, params, attn, name, **kwargs):
@@ -322,7 +314,7 @@ class PatternDecoderBlockNoCrossAttention(PatternDecoderBlock):
                 - dropout: Dropout rate
                 - l1_reg: L1 regularization coefficient
                 - l2_reg: L2 regularization coefficient
-            attn: Attention mechanism for decoder and cross attention
+            attn: (attention_class, kwargs) specification for decoder and cross attention
             name: Name of the model
             **kwargs: Additional keyword arguments for the Keras Model base class.
         """
@@ -365,7 +357,7 @@ class PatternDecoderBlockNoCrossAttention(PatternDecoderBlock):
 
         # Decoder outputs
         # Output shape: batch_size x window_size x d_model
-        dec_outputs = self.decoder(embedding, embedding, training=training)
+        dec_outputs = self.decoder(embedding, training=training)
 
         # Output shape: batch_size x d_model
         return self.ffn(dec_outputs, training=training)
@@ -393,7 +385,7 @@ class PatternDecoderNoLstmBlock(TransformerBlock):
                 - dropout: Dropout rate
                 - l1_reg: L1 regularization coefficient
                 - l2_reg: L2 regularization coefficient
-            attn : Attention mechanism for encoder, decoder and cross attention
+            attn : (attention_class, kwargs) specification for encoder, decoder and cross attention
     """
 
     def __init__(self, params, attn, name, **kwargs):
@@ -413,7 +405,7 @@ class PatternDecoderNoLstmBlock(TransformerBlock):
                 - dropout: Dropout rate
                 - l1_reg: L1 regularization coefficient
                 - l2_reg: L2 regularization coefficient
-            attn: Attention mechanism for decoder and cross attention
+            attn: (attention_class, kwargs) specification for decoder and cross attention
             name: Name of the model
             **kwargs: Additional keyword arguments for the Keras Model base class.
         """
@@ -477,7 +469,7 @@ class PatternDecoderNoConvBlock(PatternDecoderBlock):
                 - dropout: Dropout rate
                 - l1_reg: L1 regularization coefficient
                 - l2_reg: L2 regularization coefficient
-            attn : Attention mechanism for encoder, decoder and cross attention
+            attn : (attention_class, kwargs) specification for encoder, decoder and cross attention
     """
 
     def __init__(self, params, attn, name="PatternDecoderNoConv", **kwargs):
@@ -545,7 +537,7 @@ class AutoPatternDecoderBlock(PatternDecoderBlock):
             - dropout: Dropout rate
             - l1_reg: L1 regularization coefficient
             - l2_reg: L2 regularization coefficient
-        attn : Attention mechanism for encoder, decoder and cross attention
+        attn : (attention_class, kwargs) specification for encoder, decoder and cross attention
     """
 
     def __init__(self, params, attn, name, kernel_size=5, **kwargs):
@@ -569,7 +561,7 @@ class AutoPatternDecoderBlock(PatternDecoderBlock):
                 - dropout: Dropout rate
                 - l1_reg: L1 regularization coefficient
                 - l2_reg: L2 regularization coefficient
-            attn: Attention mechanism for decoder and cross attention
+            attn: (attention_class, kwargs) specification for decoder and cross attention
             **kwargs: Additional keyword arguments for the Keras Model base class.
         """
         super().__init__(params, attn, name, **kwargs)
