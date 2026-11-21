@@ -1,3 +1,4 @@
+# pylint: disable=E1101
 """
 Training helpers: random seeds and the chronological validation split.
 

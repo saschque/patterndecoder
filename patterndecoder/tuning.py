@@ -1,3 +1,4 @@
+# pylint: disable=E1101
 """
 Hyperparameter search on the chronological validation split.
 
