@@ -75,15 +75,15 @@ def load_model(params, path="models/example.yaml"):
         path (str): String representation of the yaml containing model specs.
     Returns:
         object: The class object corresponding to the provided yaml.
+    Note: attention is passed as a (class, kwargs) spec, not an instance,
+        so each layer/role builds its own via build_attention().
     """
     with open(path, encoding="utf-8") as file:
         model_params = yaml.safe_load(file)
         name = model_params["name"]
-        att = string_to_object(model_params["attention"])(
-            n_heads=params["n_heads"],
-            d_model=params["d_model"],
-        )
-        model = string_to_object(model_params["architecture"])(params, att, name)
+        attn_kwargs = {"n_heads": params["n_heads"], "d_model": params["d_model"]}
+        attn_spec = (string_to_object(model_params["attention"]), attn_kwargs)
+        model = string_to_object(model_params["architecture"])(params, attn_spec, name)
     return model
 
 
