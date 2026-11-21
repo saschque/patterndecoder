@@ -441,6 +441,28 @@ class TransformerBlock(tf.keras.Model):
             kernel_initializer=kernel_initializer,
         )
 
+    def get_config(self):
+        """
+        Returns a JSON-serialisable description of the model.
+
+        Keras needs it to write the ``.keras`` checkpoints in compile_and_train;
+        newer Keras versions refuse to save without it because ``attn`` holds a
+        class. The project only ever reloads the weights (``load_weights``) and
+        rebuilds the architecture from the model YAML via ``load_model``, so this
+        config describes the model but is not used to reconstruct it.
+        """
+        attn_class, attn_kwargs = self.attn
+        return {
+            "name": self.name,
+            "trainable": self.trainable,
+            "params": {
+                key: list(value) if isinstance(value, (list, tuple)) else value
+                for key, value in self.params.items()
+            },
+            "attention": f"{attn_class.__module__}.{attn_class.__qualname__}",
+            "attention_kwargs": dict(attn_kwargs),
+        }
+
     def build(self, input_shape):
         """
         Build method for the TransformerBlock.
