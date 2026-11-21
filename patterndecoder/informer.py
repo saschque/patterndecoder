@@ -217,6 +217,32 @@ class InformerBlock(TransformerBlock):
         progressively reduce sequence length.
     """
 
+    def __init__(self, params, attn, name, **kwargs):
+        """
+        Initializes the InformerBlock.
+
+        TransformerBlock.__init__ builds self.encoder using the plain
+        (non-distilling) Encoder defined in transformer.py, since that name is
+        resolved in the module where TransformerBlock itself is defined, not in
+        this module. Without this override, InformerBlock would silently never
+        use the distillation-enabled Encoder/EncoderLayer defined above, and the
+        progressive sequence-length distillation that defines the Informer
+        architecture would never run. This mirrors the pattern already used by
+        AutoformerBlock: build the base attributes via super().__init__(), then
+        replace self.encoder with the architecture-specific variant. The decoder
+        is intentionally left as the plain transformer decoder built by
+        TransformerBlock.__init__, consistent with the Informer paper.
+        """
+        super().__init__(params, attn, name, **kwargs)
+        self.encoder = Encoder(
+            params["units"],
+            params["d_model"],
+            params["dropout"],
+            params["n_layers_enc"],
+            attn,
+            params["activation"],
+        )
+
     def call(self, inputs, training=True):
         """
         Applies the complete Informer model for time series forecasting.
