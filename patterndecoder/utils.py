@@ -47,6 +47,7 @@ import yaml
 import yfinance as yf
 from prettytable import PrettyTable
 from statsmodels.tsa.arima.model import ARIMAResultsWrapper
+from patterndecoder.training import set_seed, split_train_validation
 
 
 def string_to_object(path):
@@ -83,6 +84,7 @@ def load_model(params, path="models/example.yaml"):
         name = model_params["name"]
         attn_kwargs = {"n_heads": params["n_heads"], "d_model": params["d_model"]}
         attn_spec = (string_to_object(model_params["attention"]), attn_kwargs)
+        set_seed(params)
         model = string_to_object(model_params["architecture"])(params, attn_spec, name)
     return model
 
@@ -285,13 +287,13 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
     # Load configuration parameters
     params = load_config(config_path)
 
-    # Generating the training and validation sets
-    # train_size = int(data.shape[0] * (1-validation_split))
-    # train_data = data.iloc[:train_size]
-    # val_data = data.iloc[train_size:]
-    # train_set, val_set = split_dataset(data, validation_split)
-    # val_ds = WindowedDataset(params)(data, shuffle=True)
-    train_ds = WindowedDataset(params)(data, shuffle=True)
+    # Chronological validation split (last validation_split share of data)
+    fit_data, val_data = split_train_validation(data, params)
+    windows = WindowedDataset(params)
+    train_ds = windows(fit_data, shuffle=True)
+    val_ds = windows(val_data) if val_data is not None else None
+    monitor = ("val_" if val_ds is not None else "") + params["metrics"][0]
+    set_seed(params)
 
     # Model checkpoint to save the best model
     file_path = params["tmp_weights_file"] + model.name + ".keras"
@@ -300,7 +302,7 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
     if params["restore_best"]:
         checkpoint = tf.keras.callbacks.ModelCheckpoint(
             file_path,
-            monitor=params["metrics"][0],
+            monitor=monitor,
             mode="min",
             save_best_only=True,
             verbose=params["verbose"],
@@ -310,7 +312,8 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
     # Early stopping
     if params["early_stopping"]:
         earlystopping = tf.keras.callbacks.EarlyStopping(
-            monitor=params["metrics"][0],
+            monitor=monitor,
+            mode="min",
             restore_best_weights=False,
             patience=params["patience"],
         )
@@ -320,11 +323,6 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
     optimizer = string_to_object(params["optimizer"])(
         learning_rate=params["learning_rate"]
     )
-    # optimizer = optimizer_class(learning_rate=training_params["learning_rate"])
-    # optimizer = tf.keras.optimizers.Lion(learning_rate=training_params["learning_rate"])
-    # For Lion optimizer, see:
-    # https://arxiv.org/abs/2302.01107
-    # https://arxiv.org/abs/2302.06675
 
     model.compile(loss=params["loss"], optimizer=optimizer, metrics=params["metrics"])
 
@@ -341,7 +339,7 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
         train_ds,
         epochs=params["epochs"],
         callbacks=callbacks,
-        # validation_data=val_ds,
+        validation_data=val_ds,
         verbose=params["verbose"],
     )
 

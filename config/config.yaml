@@ -1,7 +1,7 @@
 #window_params:
 window_size: 30
 forecast_horizon: 1
-n_features: 1
+n_features: 7
 batch_size: 32
 stride: 1
 shuffle_buffer: 1000
@@ -22,6 +22,7 @@ loss:
   - Huber
 optimizer: tensorflow.keras.optimizers.AdamW
 verbose: False
+seed: 42
 training: True
 #transformer_params:
 d_model: 32
@@ -41,4 +42,4 @@ target_column: "Close"
 period: 5y
 interval: 1d
 train_split: 0.7
-validation_split: 0.2
+validation_split: 0.2  # last share of the training data, used for epoch selection
