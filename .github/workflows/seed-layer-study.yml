@@ -1,0 +1,90 @@
+name: Seed and layer study
+
+# Trains all models in models/*.yaml for every seed and encoder/decoder layer
+# pair below (see patterndecoder/study.py). Layers are chosen per model on the
+# validation split; the summary then reports seed-averaged test results.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [study/seeds-and-layers]  # TEMP: first run
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        enc: [1, 2, 3]
+        dec: [1, 2, 3]
+    env:
+      TF_CPP_MIN_LOG_LEVEL: "2"
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Train all models
+        run: |
+          mkdir -p results
+          python -m patterndecoder.study run --seed ${{ matrix.seed }} \
+            --enc ${{ matrix.enc }} --dec ${{ matrix.dec }} \
+            --out results/s${{ matrix.seed }}_e${{ matrix.enc }}_d${{ matrix.dec }}.csv
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: study-s${{ matrix.seed }}-e${{ matrix.enc }}-d${{ matrix.dec }}
+          path: results/*.csv
+
+  summarize:
+    needs: run
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      TF_CPP_MIN_LOG_LEVEL: "2"
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: study-*
+          path: results
+          merge-multiple: true
+
+      - name: Summarize
+        run: |
+          python -m patterndecoder.study summarize results/*.csv
+          echo "--- all rows"
+          cat results/*.csv | grep -v '^model,'
