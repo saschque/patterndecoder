@@ -34,7 +34,6 @@ jobs:
     timeout-minutes: 345
     env:
       TF_CPP_MIN_LOG_LEVEL: "2"
-      MPLBACKEND: Agg
       PYTHONPATH: ${{ github.workspace }}
     steps:
       - uses: actions/checkout@v4
