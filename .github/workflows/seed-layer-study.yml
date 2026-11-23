@@ -6,8 +6,6 @@ name: Seed and layer study
 
 on:
   workflow_dispatch:
-  push:
-    branches: [study/seeds-and-layers]  # TEMP: first run
 
 permissions:
   contents: read

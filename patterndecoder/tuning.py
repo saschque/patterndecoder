@@ -13,25 +13,22 @@ Usage:
     python -m patterndecoder.tuning summarize results/*.csv
 """
 
-import argparse
-import csv
 import itertools
 import os
 import statistics
-import tempfile
 from collections import defaultdict
 
 import numpy as np
-import tensorflow as tf
-import yaml
 
-from patterndecoder.training import split_train_validation
-from patterndecoder.utils import (
-    compile_and_train,
-    get_stock_data,
-    load_config,
-    load_model,
+from patterndecoder.experiments import (
+    build_model,
+    parse_command,
+    publish_summary,
+    read_csv_rows,
+    results_writer,
 )
+from patterndecoder.training import split_train_validation
+from patterndecoder.utils import compile_and_train, get_stock_data, load_config
 
 GRID = {
     "loss": ["Huber", "mae"],
@@ -92,14 +89,7 @@ def trial_overrides():
 
 def run_trial(params, model_yaml, train_data, workdir):
     """Trains one model with the given params; returns its validation history."""
-    params = dict(params)
-    params["tmp_weights_file"] = os.path.join(workdir, "")
-    params["tmp_history_file"] = os.path.join(workdir, "")
-    config_path = os.path.join(workdir, "config.yaml")
-    with open(config_path, "w", encoding="utf-8") as file:
-        yaml.safe_dump(params, file)
-    tf.keras.backend.clear_session()
-    model = load_model(params, model_yaml)
+    model, config_path = build_model(params, model_yaml, workdir)
     history, _ = compile_and_train(model, train_data, config_path)
     return history.history["val_mae"]
 
@@ -128,27 +118,18 @@ def run(model_yaml, out_path, config_path="config/config.yaml"):
     train_data = load_training_data(base)
     baselines = validation_baselines(train_data, base)
     model_name = os.path.splitext(os.path.basename(model_yaml))[0]
-    with open(out_path, "w", newline="", encoding="utf-8") as out_file, \
-            tempfile.TemporaryDirectory() as workdir:
-        writer = csv.DictWriter(out_file, fieldnames=FIELDS)
-        writer.writeheader()
+    with results_writer(out_path, FIELDS) as (write_row, workdir):
         for combo, overrides in trial_overrides():
             for seed in SEEDS:
                 val_mae = run_trial(
                     {**base, **overrides, "seed": seed}, model_yaml, train_data, workdir
                 )
-                row = make_row(model_name, combo, seed, val_mae, baselines)
-                writer.writerow(row)
-                out_file.flush()
-                print(row, flush=True)
+                write_row(make_row(model_name, combo, seed, val_mae, baselines))
 
 
 def summarize(paths):
     """Prints a markdown table: mean relative validation MAE per grid combination."""
-    rows = []
-    for path in paths:
-        with open(path, encoding="utf-8") as file:
-            rows.extend(csv.DictReader(file))
+    rows = read_csv_rows(paths)
     by_combo = defaultdict(list)
     for row in rows:
         key = tuple(row[name] for name in GRID)
@@ -166,25 +147,17 @@ def summarize(paths):
             "| " + " | ".join(key) + f" | {100 * statistics.mean(values):+.2f} % "
             f"| {100 * min(values):+.2f} % | {100 * max(values):+.2f} % | {len(values)} |"
         )
-    text = "\n".join(lines)
-    print(text)
-    summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
-    if summary_file:
-        with open(summary_file, "a", encoding="utf-8") as file:
-            file.write("### Hyperparameter search (validation MAE vs zero forecast)\n\n")
-            file.write(text + "\n")
+    publish_summary("Hyperparameter search (validation MAE vs zero forecast)", "\n".join(lines))
 
 
 def main():
     """Command line entry point."""
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n", maxsplit=1)[0])
-    commands = parser.add_subparsers(dest="command", required=True)
-    run_parser = commands.add_parser("run")
-    run_parser.add_argument("--model", required=True)
-    run_parser.add_argument("--out", required=True)
-    summary_parser = commands.add_parser("summarize")
-    summary_parser.add_argument("paths", nargs="+")
-    args = parser.parse_args()
+
+    def add_run_arguments(run_parser):
+        run_parser.add_argument("--model", required=True)
+        run_parser.add_argument("--out", required=True)
+
+    args = parse_command(__doc__.split("\n\n", maxsplit=1)[0], add_run_arguments)
     if args.command == "run":
         run(args.model, args.out)
     else:
