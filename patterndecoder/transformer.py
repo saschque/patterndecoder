@@ -324,7 +324,7 @@ class DecoderLayer(tf.keras.layers.Layer):
         causal_mask = 1.0 - tf.linalg.band_part(tf.ones((seq_len, seq_len)), -1, 0)
 
         self_attention_output = self.self_attention(
-            inputs, inputs, inputs, mask=causal_mask
+            inputs, inputs, inputs, attn_mask=causal_mask
         )
         self_attention_output = self.dropout1(self_attention_output)
         self_attention_output = self.layernorm1(self_attention_output + inputs)
