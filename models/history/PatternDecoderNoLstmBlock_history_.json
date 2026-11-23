@@ -1,6 +1,6 @@
 {
   "model": "PatternDecoderNoLstmBlock",
-  "timestamp": "20261123_125437",
+  "timestamp": "20261123_130417",
   "params": {
     "window_size": 30,
     "forecast_horizon": 1,

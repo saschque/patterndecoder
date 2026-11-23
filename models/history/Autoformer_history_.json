@@ -1,6 +1,6 @@
 {
   "model": "Autoformer",
-  "timestamp": "20261123_125341",
+  "timestamp": "20261123_130316",
   "params": {
     "window_size": 30,
     "forecast_horizon": 1,

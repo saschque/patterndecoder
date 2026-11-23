@@ -1,6 +1,6 @@
 {
   "model": "Informer",
-  "timestamp": "20261123_125328",
+  "timestamp": "20261123_130302",
   "params": {
     "window_size": 30,
     "forecast_horizon": 1,

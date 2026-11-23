@@ -1,6 +1,6 @@
 {
   "model": "PatternDecoderBlockNoCrossAttention",
-  "timestamp": "20261123_125458",
+  "timestamp": "20261123_130439",
   "params": {
     "window_size": 30,
     "forecast_horizon": 1,

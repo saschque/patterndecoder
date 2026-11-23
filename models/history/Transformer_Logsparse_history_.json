@@ -1,6 +1,6 @@
 {
   "model": "Transformer_Logsparse",
-  "timestamp": "20261123_125305",
+  "timestamp": "20261123_130236",
   "params": {
     "window_size": 30,
     "forecast_horizon": 1,

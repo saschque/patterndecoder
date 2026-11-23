@@ -1,6 +1,6 @@
 {
   "model": "Transformer",
-  "timestamp": "20261123_125239",
+  "timestamp": "20261123_130209",
   "params": {
     "window_size": 30,
     "forecast_horizon": 1,

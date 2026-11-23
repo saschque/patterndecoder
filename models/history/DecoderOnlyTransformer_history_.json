@@ -1,6 +1,6 @@
 {
   "model": "DecoderOnlyTransformer",
-  "timestamp": "20261123_125350",
+  "timestamp": "20261123_130327",
   "params": {
     "window_size": 30,
     "forecast_horizon": 1,
