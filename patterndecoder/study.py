@@ -6,9 +6,10 @@ Seed and layer study for all models defined in models/*.yaml.
 and decoder layers, and records the best validation MAE (the epoch selected by
 compile_and_train) and the test MAE/RMSE of the selected weights.
 
-``summarize`` chooses the layer combination of each model by its mean
-validation MAE over the seeds and only then reports the test results of that
-combination, averaged over the seeds. Test results never influence the choice.
+``summarize`` chooses one layer combination for all models, the one with the
+lowest mean validation MAE over all models and seeds, and only then reports
+the test results of that combination, averaged over the seeds. Test results
+never influence the choice.
 
 Usage:
     python -m patterndecoder.study run --seed 1 --enc 3 --dec 2 --out r.csv
@@ -108,6 +109,7 @@ def run(seed, layers, out_path, config_path="config/config.yaml"):
         seed=seed,
         n_layers_enc=layers[0],
         n_layers_dec=layers[1],
+        model_overrides=False,  # the study sets the layers, not models/*.yaml
     )
     data = load_split(params)
     naive = naive_errors(data[1], params)
@@ -127,16 +129,15 @@ def read_rows(paths):
 
 
 def select_layers(rows):
-    """Per model, the (enc, dec) pair with the lowest mean validation MAE."""
-    by_config = defaultdict(list)
+    """
+    The (enc, dec) pair with the lowest mean validation MAE over all models and
+    seeds, applied to every model so that all models have the same depth.
+    """
+    by_pair = defaultdict(list)
     for row in rows:
-        by_config[(row["model"], row["enc"], row["dec"])].append(row["val_mae"])
-    best = {}
-    for (model, enc, dec), values in by_config.items():
-        score = statistics.mean(values)
-        if model not in best or score < best[model][1]:
-            best[model] = ((enc, dec), score)
-    return {model: layers for model, (layers, _) in best.items()}
+        by_pair[(row["enc"], row["dec"])].append(row["val_mae"])
+    best = min(by_pair, key=lambda pair: statistics.mean(by_pair[pair]))
+    return {row["model"]: best for row in rows}
 
 
 def chosen_results(rows, chosen):
@@ -181,7 +182,7 @@ def test_table(rows, chosen):
 def summarize(paths):
     """Prints the layer choice (validation) and the test results (seed means)."""
     rows = read_rows(paths)
-    lines = ["Layers chosen per model by mean validation MAE over the seeds."]
+    lines = ["One layer pair for all models, chosen by mean validation MAE over models and seeds."]
     lines += test_table(rows, select_layers(rows))
     publish_summary("Seed and layer study", "\n".join(lines))
 

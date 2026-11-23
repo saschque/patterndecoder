@@ -434,7 +434,7 @@ class AutoDecoderLayer(TransformerDecoderLayer):
 
         # Self attention layer
         self_attention_output = self.self_attention(
-            inputs, inputs, inputs, mask=causal_mask
+            inputs, inputs, inputs, attn_mask=causal_mask
         )
 
         self_attention_output = self.dropout1(self_attention_output)

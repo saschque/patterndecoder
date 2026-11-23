@@ -72,7 +72,7 @@ class DecoderLayerNoCrossAttention(tf.keras.layers.Layer):
             inputs,
             inputs,
             inputs,
-            mask=causal_mask,
+            attn_mask=causal_mask,
         )
 
         self_attention_output = self.dropout1(

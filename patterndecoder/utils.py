@@ -74,6 +74,8 @@ def load_model(params, path="models/example.yaml"):
 
     Args:
         path (str): String representation of the yaml containing model specs.
+            An optional ``params`` mapping in it overrides config entries for
+            this model unless ``params["model_overrides"]`` is False.
     Returns:
         object: The class object corresponding to the provided yaml.
     Note: attention is passed as a (class, kwargs) spec, not an instance,
@@ -82,6 +84,9 @@ def load_model(params, path="models/example.yaml"):
     with open(path, encoding="utf-8") as file:
         model_params = yaml.safe_load(file)
         name = model_params["name"]
+        # Optional per-model settings (e.g. layer counts) override the config
+        if params.get("model_overrides", True):
+            params = {**params, **model_params.get("params", {})}
         attn_kwargs = {"n_heads": params["n_heads"], "d_model": params["d_model"]}
         attn_spec = (string_to_object(model_params["attention"]), attn_kwargs)
         set_seed(params)
@@ -714,7 +719,6 @@ def get_model_performance(model, params, dataset):
     if isinstance(model, ARIMAResultsWrapper):
         predictions = model.predict(start=params["window_size"] + 1, end=len(dataset))
         # ARIMA predictions are already aligned with the correct indices
-        # predictions = predictions.values.reshape(-1, 1)
     else:
         predictions = model.predict(windowed_dataset, verbose=0)
         # predictions shape: (num_windows, forecast_horizon, num_features)
@@ -758,10 +762,6 @@ def get_model_performance(model, params, dataset):
     # For cumulative returns calculation - fix the logic
     # If you want cumulative sum of predictions
     predictions_cum = actuals_df.cumsum() - (actuals_df - predictions_df)
-
-    # Alternative: if you want to calculate cumulative actual values with prediction adjustments
-    # actuals_cum = actuals_df.cumsum()
-    # predictions_cum = actuals_cum + (predictions_df - actuals_df).cumsum()
 
     return {
         "mae": mae,

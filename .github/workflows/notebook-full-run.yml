@@ -3,8 +3,9 @@ name: Notebook full run
 # Retrains all models and executes patterndecoder_evaluation_study.ipynb from
 # top to bottom. Started by hand only (Actions -> "Notebook full run" ->
 # "Run workflow"), because a full run takes several hours on a CPU runner.
-# Nothing is committed back: the executed notebook, the weights and the
-# training histories are attached to the run as an artifact.
+# The executed notebook, the weights and the training histories are attached
+# to the run as an artifact. With push_results they are also pushed to a new
+# branch notebook-run/<run number>; nothing is ever pushed to main.
 
 on:
   workflow_dispatch:
@@ -13,9 +14,13 @@ on:
         description: "Training epochs per model (config default: 50)"
         required: true
         default: "50"
+      push_results:
+        description: "Also push the executed notebook, weights and histories to branch notebook-run/<run number>"
+        type: boolean
+        default: false
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: notebook-full-run
@@ -29,7 +34,6 @@ jobs:
     timeout-minutes: 345
     env:
       TF_CPP_MIN_LOG_LEVEL: "2"
-      MPLBACKEND: Agg
       PYTHONPATH: ${{ github.workspace }}
     steps:
       - uses: actions/checkout@v4
@@ -78,6 +82,20 @@ jobs:
             config/config.yaml
             pip-freeze.txt
           retention-days: 30
+
+      - name: Push results to a branch
+        if: inputs.push_results
+        run: |
+          cp output/patterndecoder_evaluation_study.ipynb patterndecoder_evaluation_study.ipynb
+          git checkout config/config.yaml
+          branch="notebook-run/${{ github.run_number }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add patterndecoder_evaluation_study.ipynb models/history
+          git add -f models/weights/*.keras
+          git commit -m "Executed notebook, weights and histories of run ${{ github.run_number }}"
+          git push origin "$branch"
 
       - name: Summary
         if: always()
