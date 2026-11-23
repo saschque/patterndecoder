@@ -47,6 +47,7 @@ import yaml
 import yfinance as yf
 from prettytable import PrettyTable
 from statsmodels.tsa.arima.model import ARIMAResultsWrapper
+from patterndecoder.training import set_seed, split_train_validation
 
 
 def string_to_object(path):
@@ -73,6 +74,8 @@ def load_model(params, path="models/example.yaml"):
 
     Args:
         path (str): String representation of the yaml containing model specs.
+            An optional ``params`` mapping in it overrides config entries for
+            this model unless ``params["model_overrides"]`` is False.
     Returns:
         object: The class object corresponding to the provided yaml.
     Note: attention is passed as a (class, kwargs) spec, not an instance,
@@ -81,8 +84,12 @@ def load_model(params, path="models/example.yaml"):
     with open(path, encoding="utf-8") as file:
         model_params = yaml.safe_load(file)
         name = model_params["name"]
+        # Optional per-model settings (e.g. layer counts) override the config
+        if params.get("model_overrides", True):
+            params = {**params, **model_params.get("params", {})}
         attn_kwargs = {"n_heads": params["n_heads"], "d_model": params["d_model"]}
         attn_spec = (string_to_object(model_params["attention"]), attn_kwargs)
+        set_seed(params)
         model = string_to_object(model_params["architecture"])(params, attn_spec, name)
     return model
 
@@ -267,31 +274,33 @@ def dict_to_history(history_dict):
 
 def compile_and_train(model, data, config_path="config/config.yaml"):
     """
-    Compiles and trains a Keras model using specified training parameters.
+    Compiles and trains a Keras model with the settings in a config file.
+
+    The last ``validation_split`` share of ``data`` is held out (chronologically)
+    as validation set. The checkpoint keeps the epoch with the lowest validation
+    metric, early stopping watches the same metric, and the best weights are
+    loaded at the end. With ``training: False`` the model is only built and the
+    stored weights and history are loaded.
 
     Args:
         model (tf.keras.Model): The Keras model to compile and train.
-        train_set (tf.data.Dataset): Training dataset.
-        training_params (dict): Dictionary containing training parameters such as:
-            - loss (str or list): Loss function(s) for training.
-            - learning_rate (float): Learning rate for the optimizer.
-            - metrics (list): List of metrics to evaluate during training.
-            - epochs (int): Number of epochs for training.
-            - verbose (bool): Whether to display training progress. Default is False.
+        data (pd.DataFrame): Training data (log returns) in chronological order.
+        config_path (str): Path of the config file (loss, optimizer, learning
+            rate, epochs, seed, validation_split, early stopping, ...).
 
     Returns:
-        tuple: A tuple containing the training history and the trained model.
+        tuple: The training history and the model with the best weights.
     """
     # Load configuration parameters
     params = load_config(config_path)
 
-    # Generating the training and validation sets
-    # train_size = int(data.shape[0] * (1-validation_split))
-    # train_data = data.iloc[:train_size]
-    # val_data = data.iloc[train_size:]
-    # train_set, val_set = split_dataset(data, validation_split)
-    # val_ds = WindowedDataset(params)(data, shuffle=True)
-    train_ds = WindowedDataset(params)(data, shuffle=True)
+    # Chronological validation split (last validation_split share of data)
+    fit_data, val_data = split_train_validation(data, params)
+    windows = WindowedDataset(params)
+    train_ds = windows(fit_data, shuffle=True)
+    val_ds = windows(val_data) if val_data is not None else None
+    monitor = ("val_" if val_ds is not None else "") + params["metrics"][0]
+    set_seed(params)
 
     # Model checkpoint to save the best model
     file_path = params["tmp_weights_file"] + model.name + ".keras"
@@ -300,7 +309,7 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
     if params["restore_best"]:
         checkpoint = tf.keras.callbacks.ModelCheckpoint(
             file_path,
-            monitor=params["metrics"][0],
+            monitor=monitor,
             mode="min",
             save_best_only=True,
             verbose=params["verbose"],
@@ -310,7 +319,8 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
     # Early stopping
     if params["early_stopping"]:
         earlystopping = tf.keras.callbacks.EarlyStopping(
-            monitor=params["metrics"][0],
+            monitor=monitor,
+            mode="min",
             restore_best_weights=False,
             patience=params["patience"],
         )
@@ -320,11 +330,6 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
     optimizer = string_to_object(params["optimizer"])(
         learning_rate=params["learning_rate"]
     )
-    # optimizer = optimizer_class(learning_rate=training_params["learning_rate"])
-    # optimizer = tf.keras.optimizers.Lion(learning_rate=training_params["learning_rate"])
-    # For Lion optimizer, see:
-    # https://arxiv.org/abs/2302.01107
-    # https://arxiv.org/abs/2302.06675
 
     model.compile(loss=params["loss"], optimizer=optimizer, metrics=params["metrics"])
 
@@ -341,7 +346,7 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
         train_ds,
         epochs=params["epochs"],
         callbacks=callbacks,
-        # validation_data=val_ds,
+        validation_data=val_ds,
         verbose=params["verbose"],
     )
 
@@ -462,13 +467,8 @@ class WindowedDataset:
     the specified forecast horizon.
 
     Args:
-        window_params (dict): Parameters for generating windows, including:
-            - window_size: Number of time steps in each input window.
-            - forecast_horizon: Number of future time steps to predict.
-            - batch_size: Batch size for the dataset.
-            - stride: Stride between consecutive windows.
-            - shuffle_buffer: Buffer size for shuffling windows. Default is 1000.
-        data_params (dict): Parameters specifying columns in the dataset.
+        params (dict): Configuration with window_size, forecast_horizon,
+            batch_size, stride, shuffle_buffer, columns and target_column.
 
     Methods:
         __call__(dataframe, shuffle=False):
@@ -701,11 +701,15 @@ class Naive:
 
 def get_model_performance(model, params, dataset):
     """
-    Computes metrics like MAE/RMSE for the model on train/test datasets
-    and stores results in a dictionary.
+    Computes MAE and RMSE of a model's one-step forecasts on one dataset.
+
+    Args:
+        model: Trained model or baseline with a ``predict`` method.
+        params (dict): Configuration (window_size and windowing settings).
+        dataset (pd.DataFrame): Log returns to forecast (train or test set).
 
     Returns:
-        dict: Dictionary containing metrics and predictions.
+        dict: MAE, RMSE, the predictions and the price-path curve.
     """
 
     # Create windowed dataset (non-shuffled for temporal integrity)
@@ -716,7 +720,6 @@ def get_model_performance(model, params, dataset):
     if isinstance(model, ARIMAResultsWrapper):
         predictions = model.predict(start=params["window_size"] + 1, end=len(dataset))
         # ARIMA predictions are already aligned with the correct indices
-        # predictions = predictions.values.reshape(-1, 1)
     else:
         predictions = model.predict(windowed_dataset, verbose=0)
         # predictions shape: (num_windows, forecast_horizon, num_features)
@@ -757,13 +760,8 @@ def get_model_performance(model, params, dataset):
     mae = round(get_mae(predictions_df.values, actuals_df.values), 6)
     rmse = round(get_rmse(predictions_df.values, actuals_df.values), 6)
 
-    # For cumulative returns calculation - fix the logic
-    # If you want cumulative sum of predictions
+    # Price-path curve: re-anchored to the true previous value at every step
     predictions_cum = actuals_df.cumsum() - (actuals_df - predictions_df)
-
-    # Alternative: if you want to calculate cumulative actual values with prediction adjustments
-    # actuals_cum = actuals_df.cumsum()
-    # predictions_cum = actuals_cum + (predictions_df - actuals_df).cumsum()
 
     return {
         "mae": mae,
@@ -781,10 +779,9 @@ class Forecasts:
     and visualizes performance through plots and tables.
 
     Args:
-        models (list): List of tuples containing model name, instance, and color for plotting.
-        train_data (pd.DataFrame): Training dataset with ground truth values.
-        test_data (pd.DataFrame): Test dataset with ground truth values.
-        params (dict): Parameters specifying sliding window dimensions, stride and columns.
+        models (list): Trained models and baselines (each with ``name`` and ``predict``).
+        params (dict): Configuration (window size and windowing settings).
+        data (list): [train_data, test_data] as DataFrames of log returns.
 
     Methods:
         generate_model_performances():
@@ -806,16 +803,9 @@ class Forecasts:
         Initializes the `Forecasts` class for evaluating and visualizing model performances.
 
         Args:
-            models (list[tuple]): List of tuples, where each tuple contains:
-                - model_name (str): Name of the model.
-                - model: Trained model instance.
-                - color (str): Color used for plotting this model's results.
-            train_data (pd.DataFrame): Training dataset containing ground truth values.
-            test_data (pd.DataFrame): Test dataset containing ground truth values.
-            params (dict): Dictionary containing parameters for sliding window generation:
-                - window_size (int): Number of time steps in each input window.
-                - forecast_horizon (int): Number of steps ahead to predict targets.
-                - columns (list[str]): List of column names to use as features.
+            models (list): Trained models and baselines (each with ``name`` and ``predict``).
+            params (dict): Configuration (window size and windowing settings).
+            data (list): [train_data, test_data] as DataFrames of log returns.
 
         Returns:
             None
@@ -871,15 +861,9 @@ class Forecasts:
         """
         Plots the performance of each model on train and test datasets.
 
-        This method generates two subplots for each model:
-        1. In-sample predictions (train set): Compares the actual values with the predictions
-            made by the model.
-        2. Out-of-sample predictions (test set): Compares the actual values with the predictions
-            made by the model.
-
-        Each plot includes:
-        - Actual values (ground truth) in red.
-        - Model predictions in a specified color.
+        For each model, four subplots compare actual values (black) with the
+        model's forecasts: price path and log returns, each in-sample (train set)
+        and out-of-sample (test set).
 
         Args:
             None
@@ -933,7 +917,7 @@ class Forecasts:
             axs[1][0].tick_params(axis="x", rotation=30)
             axs[1][0].legend(loc="lower right")
 
-            # Subplot 2: out-of-sample log return predictions
+            # Subplot 4: out-of-sample log return predictions
             axs[1][1].grid()
             axs[1][1].plot(
                 performance["test_log_actuals"], color="black", label="Test Set"

@@ -5,7 +5,7 @@
 
 This study examines the effectiveness of Transformer-based models for short-term financial time series forecasting, specifically focusing on one-day-ahead prediction using log returns derived from daily closing prices of the DAX40 index. Various Transformer architectures are evaluated for their predictive performance, including the standard Transformer with multiple attention mechanisms (full, convolutional, LogSparse), specialized variants (Informer, Autoformer), and the newly introduced PatternDecoder architecture, a hybrid decoder-only Transformer. Additionally, baseline models (Naïve, Conv1D-LSTM) are analyzed to provide performance benchmarks. The models are evaluated using MAE and RMSE across 30-day input windows for single-step forecasting.  
 
-In the current run, no trained model - the PatternDecoder included - demonstrably improves on the zero-return (random-walk) baseline: all test errors lie within about 4 % of each other, most of these differences are too small to resolve with 353 test points, one training run per model and no fixed seeds, and the ranking of the models differed between two executions of the notebook. This is consistent with the noise-dominated nature of one-day-ahead returns and with simple baseline models remaining highly relevant in this domain. The input also contains **calendar features** (sine/cosine encodings of day of week, day of month and month); their effect was not tested separately.
+Averaged over ten training seeds, with the same depth for all models (chosen on a validation set), all Transformer-type models - the PatternDecoder included - are slightly better than the zero-return (random-walk) baseline, by 0.1 % to 0.3 % in MAE. The PatternDecoder is among the best, but the differences between the models are within seed noise, and a constant forecast of the median return is about as good as the best models. This is consistent with the noise-dominated nature of one-day-ahead returns and with simple baseline models remaining highly relevant in this domain. The input also contains **calendar features** (sine/cosine encodings of day of week, day of month and month); their effect was not tested separately.
 
 ## Introduction
 
@@ -127,7 +127,7 @@ transformer_history, transformer_model = compile_and_train(transformer_model, tr
 
 ## Evaluation
 
-Models are evaluated using MAE and RMSE on training and test sets, with Huber loss and AdamW optimizer (learning rate $1\times10^{-4}$). In the current run no model, including the PatternDecoder variants, demonstrably beats the zero-return (Naïve) baseline: the test MAEs of all 16 rows lie within 3.9 % of each other, well inside the bootstrap uncertainty of the baseline's own error (test MAE 0.0076). This highlights the difficulty of short-term financial forecasting; the study does not allow conclusions about the benefit of calendar features, which were not tested separately. See the notebook's "Discussion of Results" for details and limitations (one run per model, no fixed seeds, no validation set).
+Models are trained with MAE loss and the AdamW optimizer (learning rate $1\times10^{-4}$), with early stopping on a validation set (the last 20 % of the training period) and a fixed seed; loss, learning rate, dropout and model size were chosen by a validation search (`patterndecoder/tuning.py`). Models are evaluated using MAE and RMSE on training and test sets. In a study over ten seeds and 1-3 encoder and decoder layers (`patterndecoder/study.py`, results in `results/seed_layer_study.md`), one layer pair (2 encoder, 1 decoder) was chosen for all models on the validation set. With it, all 13 Transformer-type models have a mean test MAE below the zero-return baseline (0.007599); the PatternDecoder reaches 0.007575, second behind PatternDecoderNoLstmBlock (0.007574), and no two models can be told apart across seeds. A constant median forecast reaches 0.007574, so the result shows no forecasting skill beyond the drift of the period. See the notebook's "Discussion of Results" for details and limitations.
 
 ## Project Structure
 
@@ -143,7 +143,13 @@ Models are evaluated using MAE and RMSE on training and test sets, with Huber lo
   - `informer.py`: Informer model implementation  
   - `autoformer.py`: Autoformer model implementation  
   - `patterndecoder.py`: PatternDecoder model implementation  
-  - `utils.py`: Data processing, feature engineering (includes calendaric features), and evaluation functions
+  - `utils.py`: Data processing, feature engineering (includes calendaric features), training and evaluation functions
+  - `training.py`: Random seeds and the chronological validation split
+  - `tuning.py`: Hyperparameter search on the validation set
+  - `study.py`: Seed and layer study over all models
+  - `experiments.py`: Helpers shared by the tuning and study scripts
+- `results/`: Results of the seed and layer study (`seed_layer_study.csv`, `seed_layer_study.md`)
+- `.github/workflows/`: Pylint, plus manually started workflows that run the whole notebook ("Notebook full run"), the hyperparameter search and the seed and layer study on GitHub Actions
 - `patterndecoder_evaluation_study.ipynb`: Main Jupyter notebook for model evaluation and analysis
 
 ## License
