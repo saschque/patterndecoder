@@ -108,6 +108,7 @@ def run(seed, layers, out_path, config_path="config/config.yaml"):
         seed=seed,
         n_layers_enc=layers[0],
         n_layers_dec=layers[1],
+        model_overrides=False,  # the study sets the layers, not models/*.yaml
     )
     data = load_split(params)
     naive = naive_errors(data[1], params)

@@ -1,3 +1,7 @@
 name: Informer
 architecture: patterndecoder.informer.InformerBlock
 attention: patterndecoder.attention.ProbSparseAttention
+# layer counts chosen on the validation split (results/seed_layer_study.md)
+params:
+  n_layers_enc: 2
+  n_layers_dec: 1

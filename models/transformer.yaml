@@ -1,3 +1,7 @@
 name: Transformer
 architecture: patterndecoder.transformer.TransformerBlock
 attention: patterndecoder.attention.MultiHeadAttention
+# layer counts chosen on the validation split (results/seed_layer_study.md)
+params:
+  n_layers_enc: 1
+  n_layers_dec: 2
