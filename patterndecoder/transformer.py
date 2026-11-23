@@ -398,7 +398,9 @@ class TransformerBlock(tf.keras.Model):
         # Attention specification (attention_class, kwargs); a fresh instance is
         # built per layer/role by the Encoder/Decoder below.
         self.attn = attn
-        # Encoder
+        # Encoder. Subclasses without an encoder stack (PatternDecoder and
+        # decoder-only models) never call it, but it is still constructed here,
+        # so n_layers_enc changes their random initialisation, not their structure.
         self.encoder = Encoder(
             params["units"],
             params["d_model"],

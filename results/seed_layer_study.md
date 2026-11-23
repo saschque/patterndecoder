@@ -4,7 +4,7 @@ All 13 models in `models/*.yaml` were trained with the tuned config (MAE loss, l
 
 ## Protocol
 
-1. One pair of encoder and decoder layers is used for all models, so that all models have the same depth. It is the pair with the lowest mean validation MAE over all models and seeds: 2 encoder and 1 decoder layer (1/1 and 3/1 are practically equal). The validation set is the last 20 % of the training period; the test set plays no part in the choice. Decoder-only models ignore the encoder setting.
+1. One pair of encoder and decoder layers is used for all models, so that all models have the same depth. It is the pair with the lowest mean validation MAE over all models and seeds: 2 encoder and 1 decoder layer (1/1 and 3/1 are practically equal). The validation set is the last 20 % of the training period; the test set plays no part in the choice. The encoder count only changes the architecture of the models with an encoder stack (Transformer variants, Informer, Autoformer). The PatternDecoder and decoder-only models have none; for them it only changes the random initialisation, because the unused encoder is still constructed.
 2. For that pair, the test MAE of every model is averaged over the 10 seeds. The zero forecast (random walk for the price) has test MAE 0.007599.
 
 ## Result

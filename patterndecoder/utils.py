@@ -274,20 +274,22 @@ def dict_to_history(history_dict):
 
 def compile_and_train(model, data, config_path="config/config.yaml"):
     """
-    Compiles and trains a Keras model using specified training parameters.
+    Compiles and trains a Keras model with the settings in a config file.
+
+    The last ``validation_split`` share of ``data`` is held out (chronologically)
+    as validation set. The checkpoint keeps the epoch with the lowest validation
+    metric, early stopping watches the same metric, and the best weights are
+    loaded at the end. With ``training: False`` the model is only built and the
+    stored weights and history are loaded.
 
     Args:
         model (tf.keras.Model): The Keras model to compile and train.
-        train_set (tf.data.Dataset): Training dataset.
-        training_params (dict): Dictionary containing training parameters such as:
-            - loss (str or list): Loss function(s) for training.
-            - learning_rate (float): Learning rate for the optimizer.
-            - metrics (list): List of metrics to evaluate during training.
-            - epochs (int): Number of epochs for training.
-            - verbose (bool): Whether to display training progress. Default is False.
+        data (pd.DataFrame): Training data (log returns) in chronological order.
+        config_path (str): Path of the config file (loss, optimizer, learning
+            rate, epochs, seed, validation_split, early stopping, ...).
 
     Returns:
-        tuple: A tuple containing the training history and the trained model.
+        tuple: The training history and the model with the best weights.
     """
     # Load configuration parameters
     params = load_config(config_path)
@@ -465,13 +467,8 @@ class WindowedDataset:
     the specified forecast horizon.
 
     Args:
-        window_params (dict): Parameters for generating windows, including:
-            - window_size: Number of time steps in each input window.
-            - forecast_horizon: Number of future time steps to predict.
-            - batch_size: Batch size for the dataset.
-            - stride: Stride between consecutive windows.
-            - shuffle_buffer: Buffer size for shuffling windows. Default is 1000.
-        data_params (dict): Parameters specifying columns in the dataset.
+        params (dict): Configuration with window_size, forecast_horizon,
+            batch_size, stride, shuffle_buffer, columns and target_column.
 
     Methods:
         __call__(dataframe, shuffle=False):
@@ -704,11 +701,15 @@ class Naive:
 
 def get_model_performance(model, params, dataset):
     """
-    Computes metrics like MAE/RMSE for the model on train/test datasets
-    and stores results in a dictionary.
+    Computes MAE and RMSE of a model's one-step forecasts on one dataset.
+
+    Args:
+        model: Trained model or baseline with a ``predict`` method.
+        params (dict): Configuration (window_size and windowing settings).
+        dataset (pd.DataFrame): Log returns to forecast (train or test set).
 
     Returns:
-        dict: Dictionary containing metrics and predictions.
+        dict: MAE, RMSE, the predictions and the price-path curve.
     """
 
     # Create windowed dataset (non-shuffled for temporal integrity)
@@ -759,8 +760,7 @@ def get_model_performance(model, params, dataset):
     mae = round(get_mae(predictions_df.values, actuals_df.values), 6)
     rmse = round(get_rmse(predictions_df.values, actuals_df.values), 6)
 
-    # For cumulative returns calculation - fix the logic
-    # If you want cumulative sum of predictions
+    # Price-path curve: re-anchored to the true previous value at every step
     predictions_cum = actuals_df.cumsum() - (actuals_df - predictions_df)
 
     return {
@@ -779,10 +779,9 @@ class Forecasts:
     and visualizes performance through plots and tables.
 
     Args:
-        models (list): List of tuples containing model name, instance, and color for plotting.
-        train_data (pd.DataFrame): Training dataset with ground truth values.
-        test_data (pd.DataFrame): Test dataset with ground truth values.
-        params (dict): Parameters specifying sliding window dimensions, stride and columns.
+        models (list): Trained models and baselines (each with ``name`` and ``predict``).
+        params (dict): Configuration (window size and windowing settings).
+        data (list): [train_data, test_data] as DataFrames of log returns.
 
     Methods:
         generate_model_performances():
@@ -804,16 +803,9 @@ class Forecasts:
         Initializes the `Forecasts` class for evaluating and visualizing model performances.
 
         Args:
-            models (list[tuple]): List of tuples, where each tuple contains:
-                - model_name (str): Name of the model.
-                - model: Trained model instance.
-                - color (str): Color used for plotting this model's results.
-            train_data (pd.DataFrame): Training dataset containing ground truth values.
-            test_data (pd.DataFrame): Test dataset containing ground truth values.
-            params (dict): Dictionary containing parameters for sliding window generation:
-                - window_size (int): Number of time steps in each input window.
-                - forecast_horizon (int): Number of steps ahead to predict targets.
-                - columns (list[str]): List of column names to use as features.
+            models (list): Trained models and baselines (each with ``name`` and ``predict``).
+            params (dict): Configuration (window size and windowing settings).
+            data (list): [train_data, test_data] as DataFrames of log returns.
 
         Returns:
             None
@@ -869,15 +861,9 @@ class Forecasts:
         """
         Plots the performance of each model on train and test datasets.
 
-        This method generates two subplots for each model:
-        1. In-sample predictions (train set): Compares the actual values with the predictions
-            made by the model.
-        2. Out-of-sample predictions (test set): Compares the actual values with the predictions
-            made by the model.
-
-        Each plot includes:
-        - Actual values (ground truth) in red.
-        - Model predictions in a specified color.
+        For each model, four subplots compare actual values (black) with the
+        model's forecasts: price path and log returns, each in-sample (train set)
+        and out-of-sample (test set).
 
         Args:
             None
@@ -931,7 +917,7 @@ class Forecasts:
             axs[1][0].tick_params(axis="x", rotation=30)
             axs[1][0].legend(loc="lower right")
 
-            # Subplot 2: out-of-sample log return predictions
+            # Subplot 4: out-of-sample log return predictions
             axs[1][1].grid()
             axs[1][1].plot(
                 performance["test_log_actuals"], color="black", label="Test Set"

@@ -143,7 +143,13 @@ Models are trained with MAE loss and the AdamW optimizer (learning rate $1\times
   - `informer.py`: Informer model implementation  
   - `autoformer.py`: Autoformer model implementation  
   - `patterndecoder.py`: PatternDecoder model implementation  
-  - `utils.py`: Data processing, feature engineering (includes calendaric features), and evaluation functions
+  - `utils.py`: Data processing, feature engineering (includes calendaric features), training and evaluation functions
+  - `training.py`: Random seeds and the chronological validation split
+  - `tuning.py`: Hyperparameter search on the validation set
+  - `study.py`: Seed and layer study over all models
+  - `experiments.py`: Helpers shared by the tuning and study scripts
+- `results/`: Results of the seed and layer study (`seed_layer_study.csv`, `seed_layer_study.md`)
+- `.github/workflows/`: Pylint, plus manually started workflows that run the whole notebook ("Notebook full run"), the hyperparameter search and the seed and layer study on GitHub Actions
 - `patterndecoder_evaluation_study.ipynb`: Main Jupyter notebook for model evaluation and analysis
 
 ## License
