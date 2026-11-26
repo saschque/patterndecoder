@@ -4,6 +4,7 @@ forecast_horizon: 1
 n_features: 7
 batch_size: 32
 stride: 1
+input_scale: 1  # factor for the return inputs (1: raw log returns, 100: percent)
 shuffle_buffer: 1000
 #training_params:
 # loss, learning_rate, dropout, d_model and units were chosen by the validation
