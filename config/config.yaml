@@ -44,7 +44,7 @@ target_column: "Close"
 start: "2021-02-05"
 end: "2026-02-06"  # exclusive: the last trading day used is 2026-02-05
 # SHA-256 of date and Close (4 decimals) of the data used for the published results
-data_checksum: 78ec8a468686ca3fdd7b1d404f81053448ac245602418fce299ceafd8fc98f36
+data_checksum: 28716478c49a50d6dd37b27303760644c3a3e928dc912966d505e32f9b02390b
 interval: 1d
 train_split: 0.7
 validation_split: 0.2  # last share of the training data, used for epoch selection
