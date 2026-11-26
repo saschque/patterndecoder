@@ -158,6 +158,7 @@ python -m patterndecoder.robustness summarize wf/*.csv --out wf_summary.csv
   - `study.py`: Seed and layer study over all models
   - `robustness.py`: Walk-forward evaluation over several test windows, for any ticker
   - `synthetic.py`: Synthetic return series with known patterns and oracle forecasts, used as positive controls
+  - `volatility.py`: Volatility forecasting as a second use case: Parkinson volatility, persistence, EWMA and HAR benchmarks
   - `experiments.py`: Helpers shared by the tuning, study and walk-forward scripts
   - `evaluation.py`: Median baseline, Diebold-Mariano test and forecast diagnostics
 - `tests/`: Smoke tests for the models, the training pipeline, the evaluation and the walk-forward evaluation (`python -m pytest tests`)

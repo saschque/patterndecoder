@@ -7,8 +7,11 @@ window, given as fractions of the data (default width 0.1). The training data
 are everything before the window; their last ``validation_split`` share is the
 validation set. The test data start ``window_size`` days earlier, so every day
 of the window gets a forecast. ``run`` writes the daily test forecasts of every
-model and of two benchmarks: the zero forecast (random walk for the price) and
-the median of the training returns (the best constant forecast under MAE).
+model and of the benchmarks: for returns the zero forecast (random walk for
+the price) and the median of the training returns (the best constant forecast
+under MAE), plus the oracle for synthetic series; for volatility
+(``series: parkinson``) persistence, EWMA, HAR and the training median
+(patterndecoder/volatility.py).
 
 ``summarize`` averages each model's forecasts over the seeds (an ensemble that
 removes most of the seed noise) and reports, per window and pooled over all
@@ -42,11 +45,14 @@ from patterndecoder.experiments import (
 from patterndecoder.study import load_returns, model_files
 from patterndecoder.training import split_train_validation
 from patterndecoder.utils import compile_and_train, get_model_performance, load_config
+from patterndecoder.volatility import volatility_benchmarks
 
 FIELDS = ["model", "seed", "test_start", "date", "actual", "prediction", "val_mae"]
-TESTED_BENCHMARKS = ("Naive", "Median")
+# The two benchmarks the models are tested against: for returns, for volatility
+TESTED_PAIRS = (("Naive", "Median"), ("HAR", "Persistence"))
 # Rows that are not models; Oracle exists only for synthetic series
-BENCHMARKS = TESTED_BENCHMARKS + ("Oracle",)
+BENCHMARKS = ("Naive", "Median", "Oracle", "HAR", "Persistence", "EWMA")
+LABELS = {"Naive": "zero", "Median": "median", "HAR": "HAR", "Persistence": "persistence"}
 
 
 def row_position(count, share):
@@ -78,6 +84,8 @@ def benchmark_forecasts(train_data, test_data, params, oracle=None):
     Test and validation forecasts of the benchmarks, with the validation and
     test targets. ``oracle`` (pd.Series by date) exists for synthetic series only.
     """
+    if params.get("series", "log_return") == "parkinson":
+        return volatility_benchmarks(train_data, test_data, params)
     target, window = params["target_column"], params["window_size"]
     fit_data, val_data = split_train_validation(train_data, params)
     val_targets = val_data[target].iloc[window:]
@@ -99,7 +107,7 @@ def benchmark_forecasts(train_data, test_data, params, oracle=None):
 
 
 def benchmark_rows(train_data, test_data, params, oracle=None):
-    """Daily forecasts and validation MAE of the zero, median and oracle forecasts."""
+    """Daily forecasts and validation MAE of the benchmarks."""
     forecasts, val_targets, actuals = benchmark_forecasts(train_data, test_data, params, oracle)
     rows = []
     for name, (test_forecast, val_forecast) in forecasts.items():
@@ -196,12 +204,18 @@ def windows_of(forecasts):
     return sorted({key[0] for key in forecasts}, key=float)
 
 
+def tested_pair(models):
+    """The benchmark pair (reference first) whose forecasts are among ``models``."""
+    names = set(models)
+    return next(pair for pair in TESTED_PAIRS if set(pair) <= names)
+
+
 def window_table(forecasts):
     """Per window and model: ensemble MAE, mean MAE of the single runs and rank."""
     table = []
     for start in windows_of(forecasts):
         models = {model: f for (win, model), f in forecasts.items() if win == start}
-        naive = float(np.mean(np.abs(models["Naive"]["actual"])))
+        reference = tested_pair(models)[0]
         maes = {m: float(np.mean(np.abs(f["prediction"] - f["actual"]))) for m, f in models.items()}
         neural = sorted((m for m in maes if m not in BENCHMARKS), key=maes.get)
         for model in sorted(maes, key=maes.get):
@@ -214,7 +228,7 @@ def window_table(forecasts):
                     "last_day": entry["dates"][-1],
                     "model": model,
                     "ensemble_mae": round(maes[model], 7),
-                    "vs_naive_%": round(100 * (maes[model] / naive - 1), 3),
+                    f"vs_{reference}_%": round(100 * (maes[model] / maes[reference] - 1), 3),
                     "single_run_mae": round(single, 7),
                     "rank": neural.index(model) + 1 if model in neural else "",
                 }
@@ -251,8 +265,9 @@ def pooled_table(forecasts):
     def pooled(model, field):
         return np.concatenate([forecasts[(w, model)][field] for w in windows])
 
-    actuals = pooled("Naive", "actual")
-    bench_errors = {bench: pooled(bench, "prediction") - actuals for bench in TESTED_BENCHMARKS}
+    pair = tested_pair(models)
+    actuals = pooled(pair[0], "actual")
+    bench_errors = {bench: pooled(bench, "prediction") - actuals for bench in pair}
     table = []
     for model in models:
         errors = pooled(model, "prediction") - actuals
@@ -288,17 +303,17 @@ def add_oracle_shares(table):
             row[share] = round(100 * (maes["Naive"] - row[field]) / gain, 1)
 
 
-def window_wins(window_rows):
-    """Per model: windows won against the zero and median forecast, and its rank in each."""
+def window_wins(window_rows, pair):
+    """Per model: windows won against each benchmark of ``pair``, and its rank in each."""
     by_window = defaultdict(dict)
     for row in window_rows:
         by_window[row["test_start"]][row["model"]] = row
-    wins = defaultdict(lambda: {"zero": 0, "median": 0, "ranks": []})
+    wins = defaultdict(lambda: {"ranks": [], **{bench: 0 for bench in pair}})
     for start in sorted(by_window, key=float):
         rows = by_window[start]
         for model, row in rows.items():
-            wins[model]["zero"] += row["ensemble_mae"] < rows["Naive"]["ensemble_mae"]
-            wins[model]["median"] += row["ensemble_mae"] < rows["Median"]["ensemble_mae"]
+            for bench in pair:
+                wins[model][bench] += row["ensemble_mae"] < rows[bench]["ensemble_mae"]
             wins[model]["ranks"].append(row["rank"])
     return wins
 
@@ -311,9 +326,11 @@ def format_p(value):
 def summary_text(pooled, per_window, seeds):
     """Markdown summary: the windows, then one table row per model."""
     windows = {row["test_start"]: (row["first_day"], row["last_day"]) for row in per_window}
-    wins = window_wins(per_window)
-    naive = next(row["ensemble_mae"] for row in pooled if row["model"] == "Naive")
+    first, second = tested_pair(row["model"] for row in pooled)
+    wins = window_wins(per_window, (first, second))
+    reference = next(row["ensemble_mae"] for row in pooled if row["model"] == first)
     oracle = "oracle_share_%" in pooled[0]
+    one, two = LABELS[first], LABELS[second]
     lines = [
         f"Test windows: {'; '.join(f'{a} to {b}' for a, b in windows.values())}. "
         f"{seeds} seeds, {pooled[0]['days']} test days. Forecasts averaged over the seeds; "
@@ -322,8 +339,8 @@ def summary_text(pooled, per_window, seeds):
         + (" Oracle share: part of the oracle's advantage over the zero forecast reached "
            "by the ensemble / by single runs." if oracle else ""),
         "",
-        "| Model | MAE | vs zero | p | vs median | p | single run vs zero "
-        "| windows better than zero | windows better than median | rank per window | val MAE |"
+        f"| Model | MAE | vs {one} | p | vs {two} | p | single run vs {one} "
+        f"| windows better than {one} | windows better than {two} | rank per window | val MAE |"
         + (" oracle share |" if oracle else ""),
         "|---|---|---|---|---|---|---|---|---|---|---|" + ("---|" if oracle else ""),
     ]
@@ -331,11 +348,11 @@ def summary_text(pooled, per_window, seeds):
         won = wins[row["model"]]
         ranks = ", ".join(str(r) for r in won["ranks"] if r != "") or "-"
         lines.append(
-            f"| {row['model']} | {row['ensemble_mae']:.6f} | {row['vs_Naive_%']:+.2f} % "
-            f"| {format_p(row['p_vs_Naive'])} | {row['vs_Median_%']:+.2f} % "
-            f"| {format_p(row['p_vs_Median'])} "
-            f"| {100 * (row['single_run_mae'] / naive - 1):+.2f} % "
-            f"| {won['zero']}/{len(windows)} | {won['median']}/{len(windows)} | {ranks} "
+            f"| {row['model']} | {row['ensemble_mae']:.6f} | {row[f'vs_{first}_%']:+.2f} % "
+            f"| {format_p(row[f'p_vs_{first}'])} | {row[f'vs_{second}_%']:+.2f} % "
+            f"| {format_p(row[f'p_vs_{second}'])} "
+            f"| {100 * (row['single_run_mae'] / reference - 1):+.2f} % "
+            f"| {won[first]}/{len(windows)} | {won[second]}/{len(windows)} | {ranks} "
             f"| {row['val_mae']:.6f} |"
             + (f" {round(row['oracle_share_%'])} % / {round(row['single_oracle_share_%'])} % |"
                if oracle else "")

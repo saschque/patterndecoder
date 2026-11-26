@@ -44,6 +44,7 @@ date_column: Date
 columns:
   - Close
 target_column: "Close"
+series: log_return  # series to forecast: log_return, or parkinson (daily volatility from high and low)
 start: "2021-02-05"
 end: "2026-02-06"  # exclusive: the last trading day used is 2026-02-05
 # SHA-256 of date and Close (4 decimals) of the data used for the published results
