@@ -7,7 +7,7 @@ and preparation for model training and evaluation. It supports various formats a
 frameworks, enabling efficient data management for time series forecasting and other tasks.
 
 Key Features:
-- Data loading from sources like CSV, YAML, and Yahoo Finance.
+- Configuration loading from YAML (market data: see `patterndecoder.data`).
 - Configuration management through YAML files.
 - Preprocessing techniques such as calendar feature engineering (dummy and cyclical).
 - Dataset splitting into train/test sets.
@@ -23,7 +23,6 @@ Classes:
 - `Forecasts`: Evaluates and visualizes model performance on train/test datasets.
 
 Functions:
-- `get_stock_data()`: Downloads historical stock price data from Yahoo Finance.
 - `load_config()`: Loads configuration parameters from a YAML file.
 - `compile_and_train()`: Compiles and trains a Keras model with callbacks.
 - `get_model_performance()`: Computes metrics (MAE, RMSE) and predictions for a model.
@@ -44,7 +43,6 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import yaml
-import yfinance as yf
 from prettytable import PrettyTable
 from statsmodels.tsa.arima.model import ARIMAResultsWrapper
 from patterndecoder.training import set_seed, split_train_validation
@@ -92,50 +90,6 @@ def load_model(params, path="models/example.yaml"):
         set_seed(params)
         model = string_to_object(model_params["architecture"])(params, attn_spec, name)
     return model
-
-
-def get_stock_data(params, download=False):
-    """
-    Downloads historical stock price data from Yahoo Finance.
-
-    Args:
-        params (dict): Dictionary containing parameters:
-            - ticker (str): Stock ticker symbol.
-            - path (str): Directory to save the downloaded data. Default is 'data/'.
-            - period (str): Historical period to download (e.g., '3y' for 3 years). Default is '3y'.
-            - interval (str): Frequency of the data (e.g., '1d' for daily). Default is '1d'.
-            - type (str): File type to save the data (e.g., 'csv').
-        download (bool): Whether to download the data. Default is False.
-
-    Returns:
-        pd.DataFrame: DataFrame containing historical stock price data.
-    """
-
-    path = params["data_path"]
-    ticker = params["ticker"]
-    data_type = params["type"]
-    # Download the DataFrame from Yahoo Finance
-    if download:
-        df = yf.download(
-            tickers=[params["ticker"]],
-            period=params["period"],
-            interval=params["interval"],
-            auto_adjust=False,
-            prepost=True,
-            threads=True,
-            progress=False,
-        )
-
-        df.columns = df.columns.get_level_values("Price")
-        df.to_csv(f"{path}{ticker}.{data_type}")
-
-    # Read the DataFrame from path
-    series_dataframe = pd.read_csv(f"{path}{ticker}.{data_type}", index_col=0, sep=",")
-    series_dataframe.index = pd.to_datetime(
-        series_dataframe.index, format="%Y-%m-%d", errors="coerce"
-    )
-
-    return series_dataframe
 
 
 def load_config(path="config/config.yaml"):

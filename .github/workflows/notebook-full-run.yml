@@ -1,8 +1,10 @@
 name: Notebook full run
 
-# Retrains all models and executes patterndecoder_evaluation_study.ipynb from
-# top to bottom. Started by hand only (Actions -> "Notebook full run" ->
-# "Run workflow"), because a full run takes several hours on a CPU runner.
+# Retrains all models (or, with retrain=false, loads the weights and histories
+# in the repository) and executes patterndecoder_evaluation_study.ipynb from top
+# to bottom. Started by hand only (Actions -> "Notebook full run" -> "Run workflow").
+# The market data are downloaded from Yahoo Finance once and kept in the Actions
+# cache.
 # The executed notebook, the weights and the training histories are attached
 # to the run as an artifact. With push_results they are also pushed to a new
 # branch notebook-run/<run number>; nothing is ever pushed to main.
@@ -14,6 +16,10 @@ on:
         description: "Training epochs per model (config default: 50)"
         required: true
         default: "50"
+      retrain:
+        description: "Retrain all models (false: load the weights and histories in the repository)"
+        type: boolean
+        default: true
       push_results:
         description: "Also push the executed notebook, weights and histories to branch notebook-run/<run number>"
         type: boolean
@@ -55,13 +61,29 @@ jobs:
       - name: Configure training run
         env:
           EPOCHS: ${{ inputs.epochs }}
+          TRAINING: ${{ inputs.retrain && 'True' || 'False' }}
         run: |
           if ! [[ "$EPOCHS" =~ ^[1-9][0-9]*$ ]]; then
             echo "::error::epochs must be a positive integer, got '$EPOCHS'"
             exit 1
           fi
-          sed -i -E "s/^epochs:.*/epochs: ${EPOCHS}/; s/^training:.*/training: True/" config/config.yaml
+          sed -i -E "s/^epochs:.*/epochs: ${EPOCHS}/; s/^training:.*/training: ${TRAINING}/" config/config.yaml
           grep -E '^(epochs|training):' config/config.yaml
+
+      - name: Cache key for the market data
+        id: data-key
+        run: |
+          key=$(grep -E '^(data_path|ticker|type|start|end|interval):' config/config.yaml | sha256sum | cut -c1-16)
+          echo "key=market-data-${key}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore market data
+        uses: actions/cache@v4
+        with:
+          path: data/
+          key: ${{ steps.data-key.outputs.key }}
+
+      - name: Download and check market data
+        run: python -m patterndecoder.data
 
       - name: Execute notebook
         run: |

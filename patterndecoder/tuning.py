@@ -27,8 +27,9 @@ from patterndecoder.experiments import (
     read_csv_rows,
     results_writer,
 )
+from patterndecoder.data import get_stock_data
 from patterndecoder.training import split_train_validation
-from patterndecoder.utils import compile_and_train, get_stock_data, load_config
+from patterndecoder.utils import compile_and_train, load_config
 
 GRID = {
     "loss": ["Huber", "mae"],

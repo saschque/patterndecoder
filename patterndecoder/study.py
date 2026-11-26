@@ -29,10 +29,10 @@ from patterndecoder.experiments import (
     read_csv_rows,
     results_writer,
 )
+from patterndecoder.data import get_stock_data
 from patterndecoder.utils import (
     compile_and_train,
     get_model_performance,
-    get_stock_data,
     load_config,
 )
 

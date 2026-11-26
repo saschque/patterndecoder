@@ -79,7 +79,7 @@ The study uses historical daily closing prices of the DAX40 index spanning from 
 
 4. Adding cyclical calendar features (sine/cosine of day of week, day of month and month) via utils.py as further inputs, so that each input step has 7 features
 
-You can use the provided dataset in the `data/` directory or download updated data via `get_stock_data(params, download=True)`; note that this overwrites the snapshot and changes all results.
+The price data are not included in the repository. On first use, `get_stock_data` (`patterndecoder/data.py`) downloads the daily DAX index data (`^GDAXI`, 5 February 2021 to 5 February 2026) from Yahoo Finance with yfinance and caches them in `data/`. A checksum in `config/config.yaml` (`data_checksum`) issues a warning if the downloaded closing prices differ from the data used for the published results, for example after a revision by the data provider.
 You may also use a custom dataset. Make sure to align your dataset with the preprocessing methods used in this project. 
 
 
@@ -133,7 +133,7 @@ Models are trained with MAE loss and the AdamW optimizer (learning rate $1\times
 
 - `setup.py`: Setup file to create the Python project package `patterndecoder`
 - `config/`: Contains configuration files, e.g., `config.yaml`
-- `data/`: Directory containing daily market data (DAX40)
+- `data/`: Local cache for the downloaded market data (DAX40, not part of the repository)
 - `docs/`: Supporting documentation
 - `models/`: Model configurations and pre-trained weights
 - `patterndecoder/`: Core Python modules  
@@ -143,6 +143,7 @@ Models are trained with MAE loss and the AdamW optimizer (learning rate $1\times
   - `informer.py`: Informer model implementation  
   - `autoformer.py`: Autoformer model implementation  
   - `patterndecoder.py`: PatternDecoder model implementation  
+  - `data.py`: Download and caching of the market data from Yahoo Finance
   - `utils.py`: Data processing, feature engineering (includes calendaric features), training and evaluation functions
   - `training.py`: Random seeds and the chronological validation split
   - `tuning.py`: Hyperparameter search on the validation set
