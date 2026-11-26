@@ -40,7 +40,9 @@ def test_input_scale_scales_inputs_not_targets():
         np.testing.assert_allclose(x_scaled[..., 1:], x_plain[..., 1:])
         np.testing.assert_allclose(y_scaled, y_plain)
     window = params["window_size"]
-    moving_plain = MovingAverage(1, window).predict(WindowedDataset(params)(data))
+    moving_plain = MovingAverage(1, window).predict(
+        WindowedDataset(dict(params, input_scale=1))(data)
+    )
     moving_scaled = MovingAverage(1, window, 100).predict(
         WindowedDataset(dict(params, input_scale=100))(data)
     )

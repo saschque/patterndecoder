@@ -55,7 +55,8 @@ def test_volatility_benchmarks_use_only_the_past():
     previous = series[series.index < day]
     ewma = previous.ewm(alpha=1 - volatility.EWMA_DECAY, adjust=False).mean().iloc[-1]
     assert np.isclose(forecasts["EWMA"][0][day], ewma)
-    for test_forecast, val_forecast in forecasts.values():
+    for pair in forecasts.values():
+        test_forecast, val_forecast = pair
         assert test_forecast.index.equals(actuals.index)
         assert val_forecast.index.equals(val_targets.index)
         assert np.isfinite(test_forecast).all() and np.isfinite(val_forecast).all()
