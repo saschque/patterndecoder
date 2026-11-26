@@ -499,12 +499,9 @@ class AutoformerBlock(TransformerBlock):
         the architecture for improved time series forecasting performance.
     """
 
-    def __init__(self, params, attn, name, **kwargs):
-        """
-        Initializes the AutoformerBlock.
-        """
-        super().__init__(params, attn, name, **kwargs)
-        self.encoder = AutoEncoder(
+    def build_encoder(self, params, attn):
+        """Returns the Autoformer encoder with series decomposition."""
+        return AutoEncoder(
             params["units"],
             params["d_model"],
             params["dropout"],
@@ -513,9 +510,12 @@ class AutoformerBlock(TransformerBlock):
             params["activation"],
         )
 
-        # Bugfix: this previously used params["n_layers_enc"], which silently gave
-        # the decoder the same depth as the encoder instead of its configured depth.
-        self.decoder = AutoDecoder(
+    def build_decoder(self, params, attn):
+        """
+        Returns the Autoformer decoder with trend accumulation. Its depth is
+        n_layers_dec (an earlier version used n_layers_enc by mistake).
+        """
+        return AutoDecoder(
             params["units"],
             params["d_model"],
             params["dropout"],

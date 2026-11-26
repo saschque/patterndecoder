@@ -115,7 +115,7 @@ HISTORY_PARAMS = [
     "window_size", "forecast_horizon", "batch_size", "optimizer", "learning_rate",
     "loss", "metrics", "epochs", "early_stopping", "patience", "validation_split",
     "seed", "dropout", "l1_reg", "l2_reg", "d_model", "n_heads", "units",
-    "n_layers_enc", "n_layers_dec", "input_scale",
+    "n_layers_enc", "n_layers_dec", "input_scale", "target_scale", "readout",
 ]
 
 

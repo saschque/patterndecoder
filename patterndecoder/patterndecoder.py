@@ -150,6 +150,10 @@ class DecoderOnlyTransformer(TransformerBlock):
     Decoder-only transformer model for sequence-to-sequence tasks.
     """
 
+    def build_encoder(self, params, attn):  # pylint: disable=unused-argument
+        """No encoder stack: the decoder attends to the embedded inputs."""
+        return None
+
     def call(self, inputs, training=True):
         """
         Applies the DecoderOnlyTransformer for sequence processing.
@@ -211,6 +215,10 @@ class PatternDecoderBlock(TransformerBlock):
         input-output sequences have similar structure and patterns can be
         learned through self-attention alone.
     """
+
+    def build_encoder(self, params, attn):  # pylint: disable=unused-argument
+        """No encoder stack: an LSTM over the inputs takes its place."""
+        return None
 
     def __init__(self, params, attn, name, **kwargs):
         """
@@ -297,31 +305,9 @@ class PatternDecoderBlockNoCrossAttention(PatternDecoderBlock):
         attn : (attention_class, kwargs) specification for encoder, decoder and cross attention
     """
 
-    def __init__(self, params, attn, name, **kwargs):
-        """
-        Initializes the PatternDecoderBlockNoCrossAttention.
-        Args:
-            params (dict): Dictionary containing configuration parameters:
-                - batch_size: Batch size for input tensors
-                - window_size: Length of input sequences
-                - n_features: Number of input features
-                - output_size: Size of the output (prediction horizon)
-                - d_model: Dimensionality of the model
-                - units: Number of units in feed-forward networks
-                - n_heads: Number of attention heads
-                - n_layers_enc: Number of encoder layers
-                - activation: Activation function for feed-forward networks
-                - dropout: Dropout rate
-                - l1_reg: L1 regularization coefficient
-                - l2_reg: L2 regularization coefficient
-            attn: (attention_class, kwargs) specification for decoder and cross attention
-            name: Name of the model
-            **kwargs: Additional keyword arguments for the Keras Model base class.
-        """
-
-        super().__init__(params, attn, name, **kwargs)
-
-        self.decoder = DecoderNoCrossAttention(
+    def build_decoder(self, params, attn):
+        """Returns a decoder whose layers have self-attention only."""
+        return DecoderNoCrossAttention(
             params["units"],
             params["d_model"],
             params["dropout"],
@@ -388,33 +374,9 @@ class PatternDecoderNoLstmBlock(TransformerBlock):
             attn : (attention_class, kwargs) specification for encoder, decoder and cross attention
     """
 
-    def __init__(self, params, attn, name, **kwargs):
-        """
-        Initializes the PatternDecoderNoLstmBlock.
-        Args:
-            params (dict): Dictionary containing configuration parameters:
-                - batch_size: Batch size for input tensors
-                - window_size: Length of input sequences
-                - n_features: Number of input features
-                - output_size: Size of the output (prediction horizon)
-                - d_model: Dimensionality of the model
-                - units: Number of units in feed-forward networks
-                - n_heads: Number of attention heads
-                - n_layers_enc: Number of encoder layers
-                - activation: Activation function for feed-forward networks
-                - dropout: Dropout rate
-                - l1_reg: L1 regularization coefficient
-                - l2_reg: L2 regularization coefficient
-            attn: (attention_class, kwargs) specification for decoder and cross attention
-            name: Name of the model
-            **kwargs: Additional keyword arguments for the Keras Model base class.
-        """
-        super().__init__(params, attn, name, **kwargs)
-        self.lstm_encode = tf.keras.layers.LSTM(
-            params["d_model"],
-            kernel_initializer=tf.keras.initializers.HeNormal(),
-            return_sequences=True,
-        )
+    def build_encoder(self, params, attn):  # pylint: disable=unused-argument
+        """No encoder stack: the decoder attends to the embedded inputs."""
+        return None
 
     def call(self, inputs, training=True):
         """
@@ -472,10 +434,9 @@ class PatternDecoderNoConvBlock(PatternDecoderBlock):
             attn : (attention_class, kwargs) specification for encoder, decoder and cross attention
     """
 
-    def __init__(self, params, attn, name="PatternDecoderNoConv", **kwargs):
-        super().__init__(params, attn, name, **kwargs)
-
-        self.token_embedding = DenseTokenEmbedding(params["d_model"])
+    def build_token_embedding(self, params):
+        """Returns a dense projection instead of the convolutional token embedding."""
+        return DenseTokenEmbedding(params["d_model"])
 
     def call(self, inputs, training=True):
         """
@@ -565,7 +526,11 @@ class AutoPatternDecoderBlock(PatternDecoderBlock):
             **kwargs: Additional keyword arguments for the Keras Model base class.
         """
         super().__init__(params, attn, name, **kwargs)
-        self.decoder = AutoDecoder(
+        self.series_decomp = SeriesDecomp(kernel_size)
+
+    def build_decoder(self, params, attn):
+        """Returns the Autoformer decoder with trend accumulation."""
+        return AutoDecoder(
             params["units"],
             params["d_model"],
             params["dropout"],
@@ -573,4 +538,3 @@ class AutoPatternDecoderBlock(PatternDecoderBlock):
             attn,
             params["activation"],
         )
-        self.series_decomp = SeriesDecomp(kernel_size)

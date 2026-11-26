@@ -110,3 +110,45 @@ def test_string_to_object():
         assert "dotted path" in str(error)
     else:
         raise AssertionError("expected a ValueError for a path without a dot")
+
+
+def built_model(params, model_file, data):
+    """A freshly built, untrained model, called once on the data."""
+    tf.keras.backend.clear_session()
+    model = load_model(dict(params, model_overrides=False), model_file)
+    return model, model.predict(WindowedDataset(params)(data), verbose=0)
+
+
+def test_models_build_only_the_layers_they_use(tmp_path):
+    """
+    Models without an encoder stack do not depend on n_layers_enc: with the same
+    seed, one and three encoder layers give identical initial forecasts.
+    """
+    params, _ = write_config(tmp_path)
+    data = synthetic_returns()
+    for model_file in ("models/patterndecoder.yaml", "models/decoderonly.yaml"):
+        _, one = built_model(dict(params, n_layers_enc=1), model_file, data)
+        _, three = built_model(dict(params, n_layers_enc=3), model_file, data)
+        np.testing.assert_array_equal(one, three, err_msg=model_file)
+
+
+def test_seed_sets_the_output_layer(tmp_path):
+    """The output layer has no fixed seed of its own; another seed gives other weights."""
+    params, _ = write_config(tmp_path)
+    data = synthetic_returns()
+    first, _ = built_model(dict(params, seed=1), "models/transformer.yaml", data)
+    first_kernel = first.output_dense.get_weights()[0]
+    second, _ = built_model(dict(params, seed=2), "models/transformer.yaml", data)
+    assert not np.allclose(first_kernel, second.output_dense.get_weights()[0])
+
+
+def test_readout_and_target_scale(tmp_path):
+    """The last-step readout and the output scale train and give forecasts of return size."""
+    params, _ = write_config(tmp_path, readout="last", target_scale=100)
+    data = synthetic_returns()
+    model, _ = built_model(params, "models/patterndecoder.yaml", data)
+    model.compile(loss="mae", optimizer="adam")
+    model.fit(WindowedDataset(params)(data, shuffle=True), epochs=1, verbose=0)
+    forecasts = model.predict(WindowedDataset(params)(data), verbose=0)
+    assert np.isfinite(forecasts).all()
+    assert np.abs(forecasts).max() < 0.1

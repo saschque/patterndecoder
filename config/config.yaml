@@ -5,6 +5,8 @@ n_features: 7
 batch_size: 32
 stride: 1
 input_scale: 1  # factor for the return inputs (1: raw log returns, 100: percent)
+target_scale: 1  # the output layer learns the targets times this factor; predictions stay log returns
+readout: mean  # summary of the time steps before the output layer: mean (all steps) or last
 shuffle_buffer: 1000
 #training_params:
 # loss, learning_rate, dropout, d_model and units were chosen by the validation

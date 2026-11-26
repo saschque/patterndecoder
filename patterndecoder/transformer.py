@@ -386,7 +386,7 @@ class TransformerBlock(tf.keras.Model):
         )
 
         # Embedding Layers
-        self.token_embedding = TokenEmbedding(params["d_model"])
+        self.token_embedding = self.build_token_embedding(params)
 
         self.encoding = SinusoidalPositionalEncoding(
             params["d_model"],
@@ -398,27 +398,12 @@ class TransformerBlock(tf.keras.Model):
         # Attention specification (attention_class, kwargs); a fresh instance is
         # built per layer/role by the Encoder/Decoder below.
         self.attn = attn
-        # Encoder. Subclasses without an encoder stack (PatternDecoder and
-        # decoder-only models) never call it, but it is still constructed here,
-        # so n_layers_enc changes their random initialisation, not their structure.
-        self.encoder = Encoder(
-            params["units"],
-            params["d_model"],
-            params["dropout"],
-            params["n_layers_enc"],
-            attn,
-            params["activation"],
-        )
-
-        # Decoder
-        self.decoder = Decoder(
-            params["units"],
-            params["d_model"],
-            params["dropout"],
-            params["n_layers_dec"],
-            attn,
-            params["activation"],
-        )
+        # Encoder and decoder stacks. Subclasses choose theirs by overriding the
+        # build_* methods instead of replacing layers after construction: creating
+        # a layer draws seeds for its initializers, so unused layers would shift
+        # the random initialization of the model.
+        self.encoder = self.build_encoder(params, attn)
+        self.decoder = self.build_decoder(params, attn)
 
         # Global Average Pooling and Dropout layers
         self.global_avg_pooling = tf.keras.layers.GlobalAveragePooling1D()
@@ -431,16 +416,41 @@ class TransformerBlock(tf.keras.Model):
         )
 
         # The weights of the final layer are initialized with RandomNormal
-        # (close to zero) so that training converges faster
-        kernel_initializer = tf.keras.initializers.RandomNormal(
-            mean=0.0, stddev=0.001, seed=42
-        )
+        # (close to zero) so that training converges faster. There is no fixed
+        # seed: the seed set by load_model applies, as for all other layers.
+        kernel_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.001)
 
         # Final output layer with l1 l2 regularizer and RandomNorm initializer
         self.output_dense = tf.keras.layers.Dense(
             units=params["forecast_horizon"],
             kernel_regularizer=kernel_regularizer,
             kernel_initializer=kernel_initializer,
+        )
+
+    def build_token_embedding(self, params):
+        """Returns the token embedding of the inputs (a 1D convolution)."""
+        return TokenEmbedding(params["d_model"])
+
+    def build_encoder(self, params, attn):
+        """Returns the encoder stack, or None for models without one."""
+        return Encoder(
+            params["units"],
+            params["d_model"],
+            params["dropout"],
+            params["n_layers_enc"],
+            attn,
+            params["activation"],
+        )
+
+    def build_decoder(self, params, attn):
+        """Returns the decoder stack."""
+        return Decoder(
+            params["units"],
+            params["d_model"],
+            params["dropout"],
+            params["n_layers_dec"],
+            attn,
+            params["activation"],
         )
 
     def get_config(self):
@@ -507,15 +517,19 @@ class TransformerBlock(tf.keras.Model):
         """
         # Feed-forward network
 
-        # Global Average Pooling
-        # Output shape: batch_size x d_model
-        avg_output = self.global_avg_pooling(inputs, training=training)
+        # Readout over the time steps, output shape: batch_size x d_model.
+        # "mean" averages all steps; "last" takes the last one, the only step
+        # that sees the whole window through the causal self-attention.
+        if self.params.get("readout", "mean") == "last":
+            summary = inputs[:, -1, :]
+        else:
+            summary = self.global_avg_pooling(inputs, training=training)
 
-        # Final dense projection layer
-        # Output shape: batch_size x forecast_horizon
-        dense_output = self.output_dense(avg_output, training=training)
-
-        return dense_output
+        # Final dense projection, output shape: batch_size x forecast_horizon.
+        # The layer learns the targets multiplied by target_scale (100: percent
+        # returns); dividing by it keeps predictions and losses in log returns.
+        dense_output = self.output_dense(summary, training=training)
+        return dense_output / self.params.get("target_scale", 1)
 
     def embed(self, inputs, training=True):
         """

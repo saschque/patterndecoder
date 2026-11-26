@@ -217,28 +217,21 @@ class InformerBlock(TransformerBlock):
         progressively reduce sequence length.
     """
 
-    def __init__(self, params, attn, name, **kwargs):
+    def build_encoder(self, params, attn):
         """
-        Initializes the InformerBlock.
+        Returns the distilling Informer encoder.
 
-        TransformerBlock.__init__ builds self.encoder using the plain
-        (non-distilling) Encoder defined in transformer.py, since that name is
-        resolved in the module where TransformerBlock itself is defined, not in
-        this module. Without this override, InformerBlock would silently never
+        TransformerBlock.build_encoder returns the plain (non-distilling) encoder
+        of transformer.py. Without this override, the InformerBlock would never
         use the distillation-enabled Encoder/EncoderLayer defined above, and the
-        progressive sequence-length distillation that defines the Informer
-        architecture would never run. This mirrors the pattern already used by
-        AutoformerBlock: build the base attributes via super().__init__(), then
-        replace self.encoder with the architecture-specific variant. The decoder
-        is intentionally left as the plain transformer decoder built by
-        TransformerBlock.__init__. This is only partly faithful to the Informer
-        paper: here ``attn`` (ProbSparse) is also used for the decoder's
-        cross-attention, where the paper uses full attention, and the distilling
-        step runs after every encoder layer, whereas the paper distils only
-        between layers.
+        progressive sequence-length distillation that defines the Informer would
+        never run. The decoder is the plain transformer decoder. This is only
+        partly faithful to the Informer paper: here ``attn`` (ProbSparse) is also
+        used for the decoder's cross-attention, where the paper uses full
+        attention, and the distilling step runs after every encoder layer,
+        whereas the paper distils only between layers.
         """
-        super().__init__(params, attn, name, **kwargs)
-        self.encoder = Encoder(
+        return Encoder(
             params["units"],
             params["d_model"],
             params["dropout"],
