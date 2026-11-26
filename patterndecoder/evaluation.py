@@ -15,7 +15,7 @@ import pandas as pd
 from scipy import stats
 
 
-class MedianForecast:
+class MedianForecast:  # pylint: disable=too-few-public-methods
     """
     Constant forecast equal to the median of the training target.
 
@@ -148,19 +148,28 @@ def comparison_table(forecasts, benchmarks=("Naive", "Median"), power=1):
     performances = {perf["name"]: perf for perf in forecasts.model_performances}
     first = next(iter(performances.values()))
     actuals = first["test_log_actuals"].to_numpy().ravel()
+    bench_errors = {
+        bench: performances[bench]["test_log_prediction"].to_numpy().ravel() - actuals
+        for bench in benchmarks
+    }
 
     rows = []
     for name, perf in performances.items():
         predictions = perf["test_log_prediction"].to_numpy().ravel()
         errors = predictions - actuals
         row = {"model": name, "test_mae": float(np.mean(np.abs(errors)))}
-        for bench in benchmarks:
-            bench_errors = performances[bench]["test_log_prediction"].to_numpy().ravel() - actuals
-            result = diebold_mariano(errors, bench_errors, power=power)
-            bench_loss = np.mean(np.abs(bench_errors) ** power)
-            row[f"vs_{bench}_%"] = 100 * result["mean_diff"] / bench_loss
-            row[f"p_vs_{bench}"] = result["p_value"]
+        row.update(_benchmark_columns(errors, bench_errors, power))
         row.update(forecast_diagnostics(predictions, actuals))
         rows.append(row)
 
     return pd.DataFrame(rows).sort_values("test_mae").reset_index(drop=True)
+
+
+def _benchmark_columns(errors, bench_errors, power):
+    """Relative loss difference and Diebold-Mariano p-value against each benchmark."""
+    columns = {}
+    for bench, other in bench_errors.items():
+        result = diebold_mariano(errors, other, power=power)
+        columns[f"vs_{bench}_%"] = 100 * result["mean_diff"] / np.mean(np.abs(other) ** power)
+        columns[f"p_vs_{bench}"] = result["p_value"]
+    return columns

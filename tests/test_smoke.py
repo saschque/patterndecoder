@@ -1,3 +1,4 @@
+# pylint: disable=E1101
 """
 Smoke tests for the models and the training pipeline.
 
