@@ -80,17 +80,17 @@ jobs:
 
       - name: Train all models
         run: |
-          mkdir -p results
+          mkdir -p study-out
           python -m patterndecoder.study run --seed ${{ matrix.seed }} \
             --enc ${{ matrix.enc }} --dec ${{ matrix.dec }} \
-            --out results/s${{ matrix.seed }}_e${{ matrix.enc }}_d${{ matrix.dec }}.csv
+            --out study-out/s${{ matrix.seed }}_e${{ matrix.enc }}_d${{ matrix.dec }}.csv
 
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: study-s${{ matrix.seed }}-e${{ matrix.enc }}-d${{ matrix.dec }}
-          path: results/*.csv
+          path: study-out/*.csv
 
   summarize:
     needs: run
@@ -118,11 +118,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: study-*
-          path: results
+          path: study-results
           merge-multiple: true
 
       - name: Summarize
         run: |
-          python -m patterndecoder.study summarize results/*.csv
+          python -m patterndecoder.study summarize study-results/*.csv
           echo "--- all rows"
-          cat results/*.csv | grep -v '^model,'
+          cat study-results/*.csv | grep -v '^model,'

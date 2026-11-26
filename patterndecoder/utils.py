@@ -60,7 +60,9 @@ def string_to_object(path):
     """
     # Split the string into module path and class name
     if "." not in path:
-        getattr(path)
+        raise ValueError(
+            f"Expected a dotted path such as 'tensorflow.keras.optimizers.Adam', got '{path}'"
+        )
     module_path, class_name = path.rsplit(".", 1)
     module = importlib.import_module(module_path)
     return getattr(module, class_name)
@@ -100,8 +102,7 @@ def load_config(path="config/config.yaml"):
         path (str): Path to the configuration file. Default is 'config/config.yaml'.
 
     Returns:
-        tuple: A tuple containing dictionaries for temporal window parameters, training parameters,
-            transformer parameters, and data parameters.
+        dict: All configuration parameters.
     """
 
     with open(path, encoding="utf-8") as file:
@@ -109,10 +110,13 @@ def load_config(path="config/config.yaml"):
     return config
 
 
-def split_dataset(dataset, test_ratio=0.30):
-    """Splits a panda dataframe in two."""
-    test_indices = np.random.rand(len(dataset)) < test_ratio
-    return dataset[~test_indices], dataset[test_indices]
+# Settings stored with every training history, so a run can be reproduced
+HISTORY_PARAMS = [
+    "window_size", "forecast_horizon", "batch_size", "optimizer", "learning_rate",
+    "loss", "metrics", "epochs", "early_stopping", "patience", "validation_split",
+    "seed", "dropout", "l1_reg", "l2_reg", "d_model", "n_heads", "units",
+    "n_layers_enc", "n_layers_dec",
+]
 
 
 def save_training_history(
@@ -143,15 +147,7 @@ def save_training_history(
     payload = {
         "model": model_name,
         "timestamp": timestamp,
-        "params": {
-            "window_size": params["window_size"],
-            "forecast_horizon": params["forecast_horizon"],
-            "batch_size": params["batch_size"],
-            "optimizer": params["optimizer"],
-            "learning_rate": params["learning_rate"],
-            "loss": params["loss"],
-            "metrics": params["metrics"],
-        },
+        "params": {key: params.get(key) for key in HISTORY_PARAMS},
         "history": history.history,
     }
 
@@ -208,8 +204,8 @@ def dict_to_history(history_dict):
     Convert a persisted history dict into a tf.keras.callbacks.History object.
 
     Args:
-        history_dict (dict): The `history` field loaded from JSON
-                             (metric -> list of values)
+        history_dict (dict): Payload written by `save_training_history`; its
+            ``history`` field maps each metric to a list of per-epoch values.
 
     Returns:
         tf.keras.callbacks.History
@@ -220,7 +216,7 @@ def dict_to_history(history_dict):
     history.history = history_dict["history"]
 
     # Infer epochs from metric length
-    first_metric = next(iter(history_dict.values()))
+    first_metric = next(iter(history.history.values()))
     history.epoch = list(range(len(first_metric)))
 
     return history
@@ -313,8 +309,9 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
             params=params,
         )
 
-    # Load best weights
-    model.load_weights(file_path)
+    # Load best weights (only written when restore_best is enabled)
+    if params["restore_best"]:
+        model.load_weights(file_path)
 
     return history, model
 

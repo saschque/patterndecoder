@@ -170,7 +170,7 @@ class DecoderOnlyTransformer(TransformerBlock):
 
         # Token Embedding
         # Output shape: batch_size x window_size x d_model
-        embedding = self.embed(inputs)
+        embedding = self.embed(inputs, training=training)
 
         # Decoder outputs
         # Output shape: batch_size x window_size x d_model
@@ -260,7 +260,7 @@ class PatternDecoderBlock(TransformerBlock):
 
         # Token Embedding
         # Output shape: batch_size x window_size x d_model
-        embedding = self.embed(inputs)
+        embedding = self.embed(inputs, training=training)
         enc = self.lstm_encode(inputs)
         enc = self.layernorm1(enc + embedding)
 
@@ -350,7 +350,7 @@ class PatternDecoderBlockNoCrossAttention(PatternDecoderBlock):
 
         # Token Embedding
         # Output shape: batch_size x window_size x d_model
-        embedding = self.embed(inputs)
+        embedding = self.embed(inputs, training=training)
         embedding = self.lstm_encode(embedding)
         # enc = self.lstm_encode(inputs)
         # enc = self.layernorm1(embedding)
@@ -436,7 +436,7 @@ class PatternDecoderNoLstmBlock(TransformerBlock):
 
         # Token Embedding
         # Output shape: batch_size x window_size x d_model
-        embedding = self.embed(inputs)
+        embedding = self.embed(inputs, training=training)
         embedding = self.layernorm1(embedding)
 
         # Decoder outputs
