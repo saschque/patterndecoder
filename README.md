@@ -127,7 +127,7 @@ transformer_history, transformer_model = compile_and_train(transformer_model, tr
 
 ## Evaluation
 
-Models are trained with MAE loss and the AdamW optimizer (learning rate $1\times10^{-4}$), with early stopping on a validation set (the last 20 % of the training period) and a fixed seed; loss, learning rate, dropout and model size were chosen by a validation search (`patterndecoder/tuning.py`). Models are evaluated using MAE and RMSE on training and test sets. In a study over ten seeds and 1-3 encoder and decoder layers (`patterndecoder/study.py`, results in `results/seed_layer_study.md`), one layer pair (2 encoder, 1 decoder) was chosen for all models on the validation set. With it, all 13 Transformer-type models have a mean test MAE below the zero-return baseline (0.007599); the PatternDecoder reaches 0.007575, second behind PatternDecoderNoLstmBlock (0.007574), and no two models can be told apart across seeds. A constant median forecast reaches 0.007574, so the result shows no forecasting skill beyond the drift of the period. See the notebook's "Discussion of Results" for details and limitations.
+Models are trained with MAE loss and the AdamW optimizer (learning rate $1\times10^{-4}$), with early stopping on a validation set (the last 20 % of the training period) and a fixed seed; loss, learning rate, dropout and model size were chosen by a validation search (`patterndecoder/tuning.py`). Models are evaluated using MAE and RMSE on training and test sets. In a study over ten seeds and 1-3 encoder and decoder layers (`patterndecoder/study.py`, results in `results/seed_layer_study.md`), one layer pair (2 encoder, 1 decoder) was chosen for all models on the validation set. With it, all 13 Transformer-type models have a mean test MAE below the zero-return baseline (0.007584); the PatternDecoder reaches 0.007561, second behind PatternDecoderNoLstmBlock (0.007559), and no two models can be told apart across seeds. A constant median forecast reaches 0.007559, and in the notebook's run Diebold-Mariano tests find no model significantly different from the zero or the median forecast, so the result shows no forecasting skill beyond the drift of the period. See the notebook's "Discussion of Results" for details and limitations.
 
 ## Project Structure
 
@@ -149,8 +149,10 @@ Models are trained with MAE loss and the AdamW optimizer (learning rate $1\times
   - `tuning.py`: Hyperparameter search on the validation set
   - `study.py`: Seed and layer study over all models
   - `experiments.py`: Helpers shared by the tuning and study scripts
+  - `evaluation.py`: Median baseline, Diebold-Mariano test and forecast diagnostics
+- `tests/`: Smoke tests for the models, the training pipeline and the evaluation (`python -m pytest tests`)
 - `results/`: Results of the seed and layer study (`seed_layer_study.csv`, `seed_layer_study.md`)
-- `.github/workflows/`: Pylint, plus manually started workflows that run the whole notebook ("Notebook full run"), the hyperparameter search and the seed and layer study on GitHub Actions
+- `.github/workflows/`: Pylint and tests on every push, plus manually started workflows that run the whole notebook ("Notebook full run", with or without retraining), the hyperparameter search and the seed and layer study on GitHub Actions
 - `patterndecoder_evaluation_study.ipynb`: Main Jupyter notebook for model evaluation and analysis
 
 ## License
