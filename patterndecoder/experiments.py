@@ -71,15 +71,19 @@ def publish_summary(title, text):
             file.write(f"### {title}\n\n{text}\n")
 
 
-def parse_command(description, add_run_arguments):
+def parse_command(description, add_run_arguments, add_summary_arguments=None):
     """
     Parses ``run`` / ``summarize`` sub-commands.
 
     ``add_run_arguments`` receives the ``run`` sub-parser to add its options;
-    ``summarize`` takes CSV paths. Returns the parsed arguments.
+    ``summarize`` takes CSV paths, plus the options added by
+    ``add_summary_arguments`` if given. Returns the parsed arguments.
     """
     parser = argparse.ArgumentParser(description=description)
     commands = parser.add_subparsers(dest="command", required=True)
     add_run_arguments(commands.add_parser("run"))
-    commands.add_parser("summarize").add_argument("paths", nargs="+")
+    summary_parser = commands.add_parser("summarize")
+    summary_parser.add_argument("paths", nargs="+")
+    if add_summary_arguments:
+        add_summary_arguments(summary_parser)
     return parser.parse_args()

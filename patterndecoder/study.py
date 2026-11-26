@@ -55,10 +55,15 @@ def model_files():
     return sorted(f for f in glob.glob("models/*.yaml") if "example" not in f)
 
 
+def load_returns(params):
+    """Daily log returns of the configured price columns, as in the notebook."""
+    prices = get_stock_data(params, False)[params["columns"]]
+    return np.log(prices / prices.shift(1)).fillna(0)
+
+
 def load_split(params):
     """Returns the training and test log returns, split as in the notebook."""
-    prices = get_stock_data(params, False)[params["columns"]]
-    returns = np.log(prices / prices.shift(1)).fillna(0)
+    returns = load_returns(params)
     train_size = int(returns.shape[0] * params["train_split"])
     return returns.iloc[:train_size], returns.iloc[train_size:]
 

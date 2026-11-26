@@ -77,7 +77,7 @@ The study uses historical daily closing prices of the DAX40 index spanning from 
 
 3. Splitting chronologically into training ($70\%$) and testing ($30\%$) sets, yielding $892$ training and $383$ test observations
 
-4. Adding cyclical calendar features (sine/cosine of day of week, day of month and month) via utils.py as further inputs, so that each input step has 7 features
+4. Adding cyclical calendar features (sine/cosine of day of week, day of month and month) via utils.py as further inputs, so that each input step has 7 features. The return inputs can be multiplied by `input_scale` in `config/config.yaml` (default 1, as in the published results; the targets stay unscaled)
 
 The price data are not included in the repository. On first use, `get_stock_data` (`patterndecoder/data.py`) downloads the daily DAX index data (`^GDAXI`, 5 February 2021 to 5 February 2026) from Yahoo Finance with yfinance and caches them in `data/`. A checksum in `config/config.yaml` (`data_checksum`) issues a warning if the downloaded closing prices differ from the data used for the published results, for example after a revision by the data provider.
 You may also use a custom dataset. Make sure to align your dataset with the preprocessing methods used in this project. 
@@ -129,6 +129,14 @@ transformer_history, transformer_model = compile_and_train(transformer_model, tr
 
 Models are trained with MAE loss and the AdamW optimizer (learning rate $1\times10^{-4}$), with early stopping on a validation set (the last 20 % of the training period) and a fixed seed; loss, learning rate, dropout and model size were chosen by a validation search (`patterndecoder/tuning.py`). Models are evaluated using MAE and RMSE on training and test sets. In a study over ten seeds and 1-3 encoder and decoder layers (`patterndecoder/study.py`, results in `results/seed_layer_study.md`), one layer pair (2 encoder, 1 decoder) was chosen for all models on the validation set. With it, all 13 Transformer-type models have a mean test MAE below the zero-return baseline (0.007584); the PatternDecoder reaches 0.007561, second behind PatternDecoderNoLstmBlock (0.007559), and no two models can be told apart across seeds. A constant median forecast reaches 0.007559, and in the notebook's run Diebold-Mariano tests find no model significantly different from the zero or the median forecast, so the result shows no forecasting skill beyond the drift of the period. See the notebook's "Discussion of Results" for details and limitations.
 
+A walk-forward evaluation (`patterndecoder/robustness.py`, results in `results/walk_forward.md`) retrains all models for ten seeds on five consecutive test windows that cover the second half of the data (August 2023 to February 2026), for the DAX and the S&P 500. It confirms this picture. On the DAX, the seed-averaged forecasts of all models are slightly but not significantly better than the zero forecast, and all except the Informer are behind the median forecast; on the S&P 500, 11 of the 13 models are significantly worse than the median forecast. Scaling the return inputs to percent (`input_scale: 100`) lowers the validation MAE of every model by about 0.3 %; the published results use unscaled inputs. The evaluation runs as the manually started workflow "Walk-forward evaluation" (ticker and input scaling as inputs) or locally:
+
+```bash
+mkdir -p wf
+python -m patterndecoder.robustness run --seed 1 --test-start 0.7 --out wf/seed1_0.7.csv
+python -m patterndecoder.robustness summarize wf/*.csv --out wf_summary.csv
+```
+
 ## Project Structure
 
 - `setup.py`: Setup file to create the Python project package `patterndecoder`
@@ -148,11 +156,12 @@ Models are trained with MAE loss and the AdamW optimizer (learning rate $1\times
   - `training.py`: Random seeds and the chronological validation split
   - `tuning.py`: Hyperparameter search on the validation set
   - `study.py`: Seed and layer study over all models
-  - `experiments.py`: Helpers shared by the tuning and study scripts
+  - `robustness.py`: Walk-forward evaluation over several test windows, for any ticker
+  - `experiments.py`: Helpers shared by the tuning, study and walk-forward scripts
   - `evaluation.py`: Median baseline, Diebold-Mariano test and forecast diagnostics
-- `tests/`: Smoke tests for the models, the training pipeline and the evaluation (`python -m pytest tests`)
-- `results/`: Results of the seed and layer study (`seed_layer_study.csv`, `seed_layer_study.md`)
-- `.github/workflows/`: Pylint and tests on every push, plus manually started workflows that run the whole notebook ("Notebook full run", with or without retraining), the hyperparameter search and the seed and layer study on GitHub Actions
+- `tests/`: Smoke tests for the models, the training pipeline, the evaluation and the walk-forward evaluation (`python -m pytest tests`)
+- `results/`: Results of the seed and layer study (`seed_layer_study.csv`, `seed_layer_study.md`) and of the walk-forward evaluation (`walk_forward.md`, `walk_forward.csv`, `walk_forward_windows.csv`)
+- `.github/workflows/`: Pylint and tests on every push, plus manually started workflows that run the whole notebook ("Notebook full run", with or without retraining), the hyperparameter search, the seed and layer study and the walk-forward evaluation on GitHub Actions
 - `patterndecoder_evaluation_study.ipynb`: Main Jupyter notebook for model evaluation and analysis
 
 ## License

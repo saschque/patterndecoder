@@ -115,7 +115,7 @@ HISTORY_PARAMS = [
     "window_size", "forecast_horizon", "batch_size", "optimizer", "learning_rate",
     "loss", "metrics", "epochs", "early_stopping", "patience", "validation_split",
     "seed", "dropout", "l1_reg", "l2_reg", "d_model", "n_heads", "units",
-    "n_layers_enc", "n_layers_dec",
+    "n_layers_enc", "n_layers_dec", "input_scale",
 ]
 
 
@@ -419,7 +419,8 @@ class WindowedDataset:
 
     Args:
         params (dict): Configuration with window_size, forecast_horizon,
-            batch_size, stride, shuffle_buffer, columns and target_column.
+            batch_size, stride, shuffle_buffer, columns, target_column and
+            optionally input_scale (factor for the return inputs, default 1).
 
     Methods:
         __call__(dataframe, shuffle=False):
@@ -450,6 +451,8 @@ class WindowedDataset:
         self.shuffle_buffer = params["shuffle_buffer"]
         self.columns = params["columns"]
         self.target_column = params["target_column"]
+        # Factor for the return inputs (not the targets): 1 keeps raw log returns
+        self.input_scale = params.get("input_scale", 1)
 
     def __call__(
         self, dataframe, shuffle=False, training_mode=True, multi_horizon=False
@@ -458,7 +461,7 @@ class WindowedDataset:
 
         # -------- X (inputs) --------
         calendar_features = add_cyclical_calendar_features(dataframe)
-        base_features = dataframe[self.columns]
+        base_features = dataframe[self.columns] * self.input_scale
 
         x = pd.concat([base_features, calendar_features], axis=1)
         x_array = x.values.astype("float32")
@@ -552,16 +555,18 @@ class MovingAverage:
     Args:
         forecast_horizon (int): Number of predictions per sample.
         window_size (int): Number of historical steps to average over.
+        input_scale (float): input_scale of the windowed dataset, undone here.
 
     Methods:
         predict(data, verbose=False):
             Generates moving average forecasts for all samples in the dataset.
     """
 
-    def __init__(self, forecast_horizon, window_size):
+    def __init__(self, forecast_horizon, window_size, input_scale=1):
         self.name = "MovingAverage"
         self.forecast_horizon = forecast_horizon
         self.window_size = window_size
+        self.input_scale = input_scale
 
     def predict(self, data, verbose=False):
         """
@@ -587,7 +592,8 @@ class MovingAverage:
             if hasattr(x, "numpy"):
                 x = x.numpy()
 
-            target_series = x[-self.window_size :, 0]  # log returns are in first column
+            # log returns are in the first column (scaled by input_scale)
+            target_series = x[-self.window_size :, 0] / self.input_scale
 
             # Compute mean over the window
             window_mean = np.mean(target_series)

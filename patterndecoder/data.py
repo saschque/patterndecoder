@@ -108,12 +108,16 @@ def main(config_path="config/config.yaml"):
     with open(config_path, encoding="utf-8") as file:
         params = yaml.safe_load(file)
     dataframe = get_stock_data(params)
-    matches = data_checksum(dataframe, params["columns"][0]) == params.get("data_checksum")
-    print(
-        f"{params['ticker']}: {len(dataframe)} rows, {dataframe.index[0].date()} to "
-        f"{dataframe.index[-1].date()}, checksum "
-        f"{'matches' if matches else 'differs from'} the published data"
+    summary = (
+        f"{params['ticker']}: {len(dataframe)} rows, "
+        f"{dataframe.index[0].date()} to {dataframe.index[-1].date()}"
     )
+    expected = params.get("data_checksum")
+    if not expected:
+        print(f"{summary}, no checksum configured")
+        return
+    matches = data_checksum(dataframe, params["columns"][0]) == expected
+    print(f"{summary}, checksum {'matches' if matches else 'differs from'} the published data")
     if not matches:
         print("::warning::The price data differ from the data used for the published results")
 
