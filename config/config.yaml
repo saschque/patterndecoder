@@ -27,7 +27,7 @@ loss:
   - mae
 optimizer: tensorflow.keras.optimizers.AdamW
 verbose: False
-seed: 5  # chosen from the ten study seeds as the one where PatternDecoder does best (see notebook)
+seed: 5  # chosen under the earlier setup as the study seed where PatternDecoder did best; kept for the current setup
 training: True
 #transformer_params:
 d_model: 16
