@@ -553,7 +553,7 @@ class TransformerBlock(tf.keras.Model):
 
         # Token Embedding
         # Output shape: batch_size x window_size x d_model
-        embedding = self.embed(inputs)
+        embedding = self.embed(inputs, training=training)
 
         # Encoder outputs
         # Output shape: batch_size x window_size x d_model
