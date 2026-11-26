@@ -2,20 +2,21 @@ name: Walk-forward evaluation
 
 # Trains all models for several seeds and several test windows and compares
 # their forecasts with the zero and median forecasts (patterndecoder/robustness.py).
-# Started by hand only. Ticker and input scaling can be changed for robustness
-# checks; all other settings come from config/config.yaml.
+# Started by hand only. The ticker (a Yahoo Finance ticker or a synthetic series)
+# and single config values can be changed for robustness checks; all other
+# settings come from config/config.yaml.
 
 on:
   workflow_dispatch:
     inputs:
       ticker:
-        description: "Yahoo Finance ticker (^GDAXI: DAX, ^GSPC: S&P 500)"
+        description: "Yahoo Finance ticker (^GDAXI: DAX, ^GSPC: S&P 500) or SYNTH-AR, SYNTH-MOTIF, SYNTH-CYCLE"
         required: true
         default: "^GDAXI"
-      input_scale:
-        description: "Factor for the return inputs (1: raw log returns, 100: percent)"
+      overrides:
+        description: 'Config values to change (JSON object, e.g. {"input_scale": 100})'
         required: true
-        default: "1"
+        default: "{}"
       seeds:
         description: "Seeds (JSON list)"
         required: true
@@ -30,7 +31,7 @@ permissions:
 
 env:
   TICKER: ${{ inputs.ticker }}
-  INPUT_SCALE: ${{ inputs.input_scale }}
+  OVERRIDES: ${{ inputs.overrides }}
 
 jobs:
   data:
@@ -40,25 +41,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure ticker and input scaling
-        run: |
-          ticker_pattern='^\^?[A-Za-z0-9.=-]+$'
-          scale_pattern='^[0-9]+(\.[0-9]+)?$'
-          if ! [[ "$TICKER" =~ $ticker_pattern ]]; then
-            echo "::error::invalid ticker '$TICKER'"; exit 1
-          fi
-          if ! [[ "$INPUT_SCALE" =~ $scale_pattern ]]; then
-            echo "::error::invalid input_scale '$INPUT_SCALE'"; exit 1
-          fi
-          sed -i -E "s/^ticker:.*/ticker: \"${TICKER}\"/; s/^input_scale:.*/input_scale: ${INPUT_SCALE}/" config/config.yaml
-          # the checksum describes the DAX data of the published results
-          if [ "$TICKER" != "^GDAXI" ]; then sed -i '/^data_checksum:/d' config/config.yaml; fi
-          grep -E '^(ticker|input_scale|data_checksum):' config/config.yaml || true
+      - name: Configure ticker and settings
+        run: .github/scripts/configure-run.sh
 
       - name: Cache key for the market data
         id: data-key
         run: |
-          key=$(grep -E '^(data_path|ticker|type|start|end|interval):' config/config.yaml | sha256sum | cut -c1-16)
+          key=$({ grep -E '^(data_path|ticker|type|start|end|interval):' config/config.yaml; cat patterndecoder/synthetic.py; } | sha256sum | cut -c1-16)
           echo "key=market-data-${key}" >> "$GITHUB_OUTPUT"
 
       - name: Restore market data
@@ -95,20 +84,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure ticker and input scaling
-        run: |
-          ticker_pattern='^\^?[A-Za-z0-9.=-]+$'
-          scale_pattern='^[0-9]+(\.[0-9]+)?$'
-          if ! [[ "$TICKER" =~ $ticker_pattern ]]; then
-            echo "::error::invalid ticker '$TICKER'"; exit 1
-          fi
-          if ! [[ "$INPUT_SCALE" =~ $scale_pattern ]]; then
-            echo "::error::invalid input_scale '$INPUT_SCALE'"; exit 1
-          fi
-          sed -i -E "s/^ticker:.*/ticker: \"${TICKER}\"/; s/^input_scale:.*/input_scale: ${INPUT_SCALE}/" config/config.yaml
-          # the checksum describes the DAX data of the published results
-          if [ "$TICKER" != "^GDAXI" ]; then sed -i '/^data_checksum:/d' config/config.yaml; fi
-          grep -E '^(ticker|input_scale|data_checksum):' config/config.yaml || true
+      - name: Configure ticker and settings
+        run: .github/scripts/configure-run.sh
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
@@ -173,7 +150,7 @@ jobs:
 
       - name: Summarize
         run: |
-          echo "### ${TICKER}, input_scale ${INPUT_SCALE}" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ${TICKER}, overrides ${OVERRIDES}" >> "$GITHUB_STEP_SUMMARY"
           python -m patterndecoder.robustness summarize wf-results/*.csv --out wf-summary.csv
           echo "--- pooled"; cat wf-summary.csv
           echo "--- windows"; cat wf-summary_windows.csv

@@ -12,6 +12,7 @@ import pandas as pd
 import yaml
 
 from patterndecoder import robustness
+from patterndecoder.synthetic import synthetic_data
 from patterndecoder.utils import MovingAverage, WindowedDataset, load_config
 
 
@@ -122,22 +123,46 @@ def test_summarize_ensembles_and_pools_windows(tmp_path, monkeypatch):
 
 
 def test_run_trains_and_writes_forecasts(tmp_path, monkeypatch):
-    """run trains a model for one window and writes its forecasts next to the benchmarks."""
+    """
+    run trains a model for one window of a synthetic series and writes its
+    forecasts next to the zero, median and oracle forecasts.
+    """
     params = load_config("config/config.yaml")
-    params.update(epochs=1, patience=1)
+    params.update(epochs=1, patience=1, data_path=f"{tmp_path}/", ticker="SYNTH-AR")
+    params.pop("data_checksum", None)
     config_path = tmp_path / "config.yaml"
     config_path.write_text(yaml.safe_dump(params), encoding="utf-8")
-    monkeypatch.setattr(robustness, "load_returns", lambda _params: returns())
     monkeypatch.setattr(robustness, "model_files", lambda: ["models/patterndecoder.yaml"])
     out = tmp_path / "run.csv"
-    robustness.run(3, 0.8, str(out), config_path=str(config_path))
+    robustness.run(3, 0.9, str(out), config_path=str(config_path))
     by_model = defaultdict(list)
     for row in read_rows(out):
         by_model[row["model"]].append(row)
     name = load_config("models/patterndecoder.yaml")["name"]
-    assert set(by_model) == {"Naive", "Median", name}
-    window_days = [f"{date:%Y-%m-%d}" for date in returns().index[240:270]]
+    assert set(by_model) == {"Naive", "Median", "Oracle", name}
+    data = synthetic_data(params)
+    window_days = [f"{date:%Y-%m-%d}" for date in data.index[int(len(data) * 0.9 + 1e-9) :]]
     for rows in by_model.values():
         assert [row["date"] for row in rows] == window_days
         assert all(np.isfinite(float(row["prediction"])) for row in rows)
         assert all(float(row["val_mae"]) > 0 for row in rows)
+    oracle = [float(row["prediction"]) for row in by_model["Oracle"]]
+    np.testing.assert_allclose(oracle, data["Oracle"].iloc[-len(oracle) :], atol=1e-8)
+
+
+def test_oracle_share_is_reported(tmp_path, monkeypatch):
+    """With oracle forecasts, the summary reports how much of their advantage a model reaches."""
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    rows = synthetic_forecast_rows()
+    rows += [dict(row, model="Oracle", prediction=row["actual"] * 0.9)
+             for row in rows if row["model"] == "Naive"]
+    path = tmp_path / "runs.csv"
+    with open(path, "w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=robustness.FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+    out = str(tmp_path / "summary.csv")
+    robustness.summarize([str(path)], out)
+    shares = {row["model"]: float(row["oracle_share_%"]) for row in read_rows(out)}
+    assert shares["Oracle"] == 100 and shares["Naive"] == 0
+    assert shares["Bad"] < 0 < shares["Good"] < 100

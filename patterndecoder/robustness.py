@@ -28,7 +28,9 @@ import statistics
 from collections import defaultdict
 
 import numpy as np
+import pandas as pd
 
+from patterndecoder.data import get_stock_data
 from patterndecoder.evaluation import diebold_mariano
 from patterndecoder.experiments import (
     build_model,
@@ -42,7 +44,9 @@ from patterndecoder.training import split_train_validation
 from patterndecoder.utils import compile_and_train, get_model_performance, load_config
 
 FIELDS = ["model", "seed", "test_start", "date", "actual", "prediction", "val_mae"]
-BENCHMARKS = ("Naive", "Median")
+TESTED_BENCHMARKS = ("Naive", "Median")
+# Rows that are not models; Oracle exists only for synthetic series
+BENCHMARKS = TESTED_BENCHMARKS + ("Oracle",)
 
 
 def row_position(count, share):
@@ -69,21 +73,40 @@ def split_window(returns, params, test_start, width=0.1):
     return returns.iloc[:start], returns.iloc[start - window : end]
 
 
-def benchmark_rows(train_data, test_data, params):
-    """Daily forecasts and validation MAE of the zero and median forecasts."""
-    target = params["target_column"]
-    window = params["window_size"]
+def benchmark_forecasts(train_data, test_data, params, oracle=None):
+    """
+    Test and validation forecasts of the benchmarks, with the validation and
+    test targets. ``oracle`` (pd.Series by date) exists for synthetic series only.
+    """
+    target, window = params["target_column"], params["window_size"]
     fit_data, val_data = split_train_validation(train_data, params)
-    val_targets = val_data[target].to_numpy()[window:]
-    fit_median = float(fit_data[target].median())
-    median = float(train_data[target].median())
+    val_targets = val_data[target].iloc[window:]
     actuals = test_data[target].iloc[window:]
+    constants = {
+        "Naive": (0.0, 0.0),
+        "Median": (train_data[target].median(), fit_data[target].median()),
+    }
+    forecasts = {
+        name: (
+            pd.Series(float(test), index=actuals.index),
+            pd.Series(float(val), index=val_targets.index),
+        )
+        for name, (test, val) in constants.items()
+    }
+    if oracle is not None:
+        forecasts["Oracle"] = (oracle[actuals.index], oracle[val_targets.index])
+    return forecasts, val_targets, actuals
+
+
+def benchmark_rows(train_data, test_data, params, oracle=None):
+    """Daily forecasts and validation MAE of the zero, median and oracle forecasts."""
+    forecasts, val_targets, actuals = benchmark_forecasts(train_data, test_data, params, oracle)
     rows = []
-    for name, value, val_mae in (
-        ("Naive", 0.0, float(np.mean(np.abs(val_targets)))),
-        ("Median", median, float(np.mean(np.abs(val_targets - fit_median)))),
-    ):
-        rows += [(name, date, actual, value, val_mae) for date, actual in actuals.items()]
+    for name, (test_forecast, val_forecast) in forecasts.items():
+        val_mae = float(np.mean(np.abs(val_targets - val_forecast)))
+        rows += [
+            (name, date, actual, test_forecast[date], val_mae) for date, actual in actuals.items()
+        ]
     return rows
 
 
@@ -125,8 +148,10 @@ def run(seed, test_start, out_path, width=0.1, config_path="config/config.yaml")
         raise ValueError("The walk-forward evaluation needs a validation_split above 0")
     params.update(training=True, verbose=False, seed=seed, model_overrides=False)
     data = split_window(load_returns(params), params, test_start, width)
+    prices = get_stock_data(params)
+    oracle = prices["Oracle"] if "Oracle" in prices else None
     with results_writer(out_path, FIELDS) as (write_row, workdir):
-        for row in benchmark_rows(*data, params):
+        for row in benchmark_rows(*data, params, oracle):
             write_row(csv_row(row, seed, test_start))
         for model_yaml in model_files():
             for row in model_rows(params, model_yaml, data, workdir):
@@ -227,7 +252,7 @@ def pooled_table(forecasts):
         return np.concatenate([forecasts[(w, model)][field] for w in windows])
 
     actuals = pooled("Naive", "actual")
-    bench_errors = {bench: pooled(bench, "prediction") - actuals for bench in BENCHMARKS}
+    bench_errors = {bench: pooled(bench, "prediction") - actuals for bench in TESTED_BENCHMARKS}
     table = []
     for model in models:
         errors = pooled(model, "prediction") - actuals
@@ -242,7 +267,25 @@ def pooled_table(forecasts):
             statistics.mean(v for w in windows for v in forecasts[(w, model)]["val_mae"]), 7
         )
         table.append(row)
+    add_oracle_shares(table)
     return sorted(table, key=lambda r: r["ensemble_mae"])
+
+
+def add_oracle_shares(table):
+    """
+    Adds the share of the oracle's advantage over the zero forecast that each
+    row achieves, for its ensemble and its single runs (synthetic series only).
+    """
+    maes = {row["model"]: row["ensemble_mae"] for row in table}
+    if "Oracle" not in maes:
+        return
+    gain = maes["Naive"] - maes["Oracle"]
+    for row in table:
+        for field, share in (
+            ("ensemble_mae", "oracle_share_%"),
+            ("single_run_mae", "single_oracle_share_%"),
+        ):
+            row[share] = round(100 * (maes["Naive"] - row[field]) / gain, 1)
 
 
 def window_wins(window_rows):
@@ -270,15 +313,19 @@ def summary_text(pooled, per_window, seeds):
     windows = {row["test_start"]: (row["first_day"], row["last_day"]) for row in per_window}
     wins = window_wins(per_window)
     naive = next(row["ensemble_mae"] for row in pooled if row["model"] == "Naive")
+    oracle = "oracle_share_%" in pooled[0]
     lines = [
         f"Test windows: {'; '.join(f'{a} to {b}' for a, b in windows.values())}. "
         f"{seeds} seeds, {pooled[0]['days']} test days. Forecasts averaged over the seeds; "
         "single run: mean MAE of the seeds' own forecasts. p: Diebold-Mariano test of the "
-        "pooled ensemble forecasts.",
+        "pooled ensemble forecasts."
+        + (" Oracle share: part of the oracle's advantage over the zero forecast reached "
+           "by the ensemble / by single runs." if oracle else ""),
         "",
         "| Model | MAE | vs zero | p | vs median | p | single run vs zero "
-        "| windows better than zero | windows better than median | rank per window | val MAE |",
-        "|---|---|---|---|---|---|---|---|---|---|---|",
+        "| windows better than zero | windows better than median | rank per window | val MAE |"
+        + (" oracle share |" if oracle else ""),
+        "|---|---|---|---|---|---|---|---|---|---|---|" + ("---|" if oracle else ""),
     ]
     for row in pooled:
         won = wins[row["model"]]
@@ -290,6 +337,8 @@ def summary_text(pooled, per_window, seeds):
             f"| {100 * (row['single_run_mae'] / naive - 1):+.2f} % "
             f"| {won['zero']}/{len(windows)} | {won['median']}/{len(windows)} | {ranks} "
             f"| {row['val_mae']:.6f} |"
+            + (f" {round(row['oracle_share_%'])} % / {round(row['single_oracle_share_%'])} % |"
+               if oracle else "")
         )
     return "\n".join(lines)
 

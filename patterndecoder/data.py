@@ -15,6 +15,8 @@ import pandas as pd
 import yaml
 import yfinance as yf
 
+from patterndecoder.synthetic import is_synthetic, write_synthetic_data
+
 
 def data_checksum(dataframe, column="Close"):
     """
@@ -71,7 +73,9 @@ def get_stock_data(params, download=False):
 
     The data are read from ``<data_path><ticker>.<type>``. If that file does not
     exist, or ``download`` is True, they are first downloaded from Yahoo Finance
-    for the fixed range ``params["start"]`` to ``params["end"]`` (end exclusive).
+    for the fixed range ``params["start"]`` to ``params["end"]`` (end exclusive);
+    tickers starting with ``SYNTH-`` name synthetic series, which are generated
+    instead (see patterndecoder/synthetic.py).
     If the config contains ``data_checksum``, a warning is issued when the
     closing prices differ from the data used for the published results.
 
@@ -85,7 +89,10 @@ def get_stock_data(params, download=False):
     """
     path = Path(f"{params['data_path']}{params['ticker']}.{params['type']}")
     if download or not path.exists():
-        download_stock_data(params, path)
+        if is_synthetic(params["ticker"]):
+            write_synthetic_data(params, path)
+        else:
+            download_stock_data(params, path)
 
     series_dataframe = pd.read_csv(path, index_col=0, sep=",")
     series_dataframe.index = pd.to_datetime(
