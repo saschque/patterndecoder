@@ -6,7 +6,6 @@ Run from the repository root with: python -m pytest tests
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from patterndecoder import panel
 
@@ -62,7 +61,7 @@ def test_panel_windows_use_only_the_days_before_the_target():
     for sample in (0, 50):
         row, stock = keys[sample]
         np.testing.assert_array_equal(inputs[sample], data["features"][row - 30 : row, stock])
-        assert targets[sample] == pytest.approx(data["target"][row, stock])
+        assert np.isclose(targets[sample], data["target"][row, stock])
 
 
 def test_split_rows():
@@ -70,8 +69,12 @@ def test_split_rows():
     rows = panel.split_rows(1000, PARAMS, 0.5)
     assert rows["fit"][0] == 30 and rows["fit"][-1] + 1 == rows["val"][0] == 400
     assert rows["val"][-1] + 1 == rows["test"][0] == 500 and rows["test"][-1] == 599
-    with pytest.raises(ValueError):
+    try:
         panel.split_rows(1000, PARAMS, 0.02)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("a window that leaves no training context must be rejected")
 
 
 def test_daily_ic():

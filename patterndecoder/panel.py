@@ -84,6 +84,20 @@ def download_panel(params, tickers=UNIVERSE):
     return long_format({column: frame[column] for column in COLUMNS})
 
 
+def synthetic_returns(rng, shape, reversal):
+    """
+    Log returns of a market factor plus idiosyncratic returns that reverse by
+    ``reversal`` of the previous day's, both fat-tailed (Student t with 4
+    degrees of freedom). Returns (returns, idiosyncratic returns, volatilities).
+    """
+    scale = rng.uniform(0.01, 0.02, shape[1])
+    market = 0.01 * rng.standard_t(4, shape[0]) / np.sqrt(2)
+    idiosyncratic = rng.standard_t(4, shape) / np.sqrt(2) * scale
+    for row in range(1, shape[0]):
+        idiosyncratic[row] -= reversal * idiosyncratic[row - 1]
+    return market[:, None] + idiosyncratic, idiosyncratic, scale
+
+
 def synthetic_panel(params, stocks=SYNTHETIC_STOCKS, reversal=REVERSAL, seed=SYNTHETIC_SEED):
     """
     Synthetic panel with a known cross-sectional reversal, on business days of
@@ -93,16 +107,8 @@ def synthetic_panel(params, stocks=SYNTHETIC_STOCKS, reversal=REVERSAL, seed=SYN
     rng = np.random.default_rng(seed)
     end = pd.Timestamp(params["end"]) - pd.Timedelta(days=1)
     dates = pd.bdate_range(params["start"], end, name="Date")
-    scale = rng.uniform(0.01, 0.02, stocks)
-    market = 0.01 * rng.standard_t(4, len(dates)) / np.sqrt(2)
-    shocks = rng.standard_t(4, (len(dates), stocks)) / np.sqrt(2) * scale
-    idiosyncratic = shocks.copy()
-    for row in range(1, len(dates)):
-        idiosyncratic[row] -= reversal * idiosyncratic[row - 1]
-    returns = market[:, None] + idiosyncratic
+    returns, idiosyncratic, scale = synthetic_returns(rng, (len(dates), stocks), reversal)
     excess = idiosyncratic - idiosyncratic.mean(axis=1, keepdims=True)
-    oracle = np.full_like(returns, np.nan)
-    oracle[1:] = -reversal * excess[:-1]
     close = 100 * np.exp(np.cumsum(returns, axis=0))
     spread = np.abs(returns) + np.abs(rng.normal(0, 0.5, returns.shape)) * scale
     values = {
@@ -110,7 +116,7 @@ def synthetic_panel(params, stocks=SYNTHETIC_STOCKS, reversal=REVERSAL, seed=SYN
         "High": close * np.exp(spread / 2),
         "Low": close * np.exp(-spread / 2),
         "Volume": np.exp(14 + 20 * np.abs(idiosyncratic) + rng.normal(0, 0.3, returns.shape)),
-        "Oracle": oracle,
+        "Oracle": np.vstack([np.full((1, stocks), np.nan), -reversal * excess[:-1]]),
     }
     tickers = [f"SYN{number:02d}" for number in range(1, stocks + 1)]
     return long_format(
