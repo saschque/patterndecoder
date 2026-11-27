@@ -3,6 +3,7 @@ Evaluation beyond MAE and RMSE.
 
 - MedianForecast: constant forecast equal to the median of the training
   returns, the best constant forecast under the MAE loss.
+- newey_west_test(): t-test of a zero mean for a serially correlated series.
 - diebold_mariano(): Diebold-Mariano test of equal predictive accuracy of
   two forecasts of the same targets.
 - forecast_diagnostics(): spread of the forecasts, their correlation with the
@@ -49,6 +50,44 @@ class MedianForecast:  # pylint: disable=too-few-public-methods
         return np.full((count, self.forecast_horizon), self.value)
 
 
+def newey_west_test(values, max_lag=None):
+    """
+    t-test of a zero mean for a serially correlated series.
+
+    The long-run variance of the series is estimated with a Newey-West
+    (Bartlett) kernel with ``max_lag`` lags, default floor(n^(1/3)), and the
+    statistic is compared with a t-distribution with n - 1 degrees of freedom.
+
+    Args:
+        values (array-like): The series, for example daily loss differentials.
+        max_lag (int or None): Number of lags in the long-run variance.
+
+    Returns:
+        dict: ``mean``, ``statistic``, two-sided ``p_value`` and ``n``.
+    """
+    values = np.ravel(np.asarray(values, dtype=float))
+    count = values.size
+    if max_lag is None:
+        max_lag = int(count ** (1 / 3))
+
+    centred = values - values.mean()
+    variance = centred @ centred / count
+    for lag in range(1, max_lag + 1):
+        weight = 1 - lag / (max_lag + 1)
+        variance += 2 * weight * (centred[lag:] @ centred[:-lag]) / count
+
+    result = {"mean": float(values.mean()), "n": count}
+    if variance <= 0:
+        result.update(statistic=float("nan"), p_value=float("nan"))
+        return result
+    statistic = values.mean() / np.sqrt(variance / count)
+    result.update(
+        statistic=float(statistic),
+        p_value=float(2 * stats.t.sf(abs(statistic), df=count - 1)),
+    )
+    return result
+
+
 def diebold_mariano(errors_a, errors_b, power=1, max_lag=None):
     """
     Diebold-Mariano test of equal predictive accuracy of two forecasts.
@@ -74,26 +113,8 @@ def diebold_mariano(errors_a, errors_b, power=1, max_lag=None):
     if errors_a.shape != errors_b.shape:
         raise ValueError("Both forecasts must have the same number of errors")
 
-    diff = np.abs(errors_a) ** power - np.abs(errors_b) ** power
-    count = diff.size
-    if max_lag is None:
-        max_lag = int(count ** (1 / 3))
-
-    centred = diff - diff.mean()
-    variance = centred @ centred / count
-    for lag in range(1, max_lag + 1):
-        weight = 1 - lag / (max_lag + 1)
-        variance += 2 * weight * (centred[lag:] @ centred[:-lag]) / count
-
-    result = {"mean_diff": float(diff.mean()), "n": count}
-    if variance <= 0:
-        result.update(statistic=float("nan"), p_value=float("nan"))
-        return result
-    statistic = diff.mean() / np.sqrt(variance / count)
-    result.update(
-        statistic=float(statistic),
-        p_value=float(2 * stats.t.sf(abs(statistic), df=count - 1)),
-    )
+    result = newey_west_test(np.abs(errors_a) ** power - np.abs(errors_b) ** power, max_lag)
+    result["mean_diff"] = result.pop("mean")
     return result
 
 

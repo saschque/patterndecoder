@@ -253,6 +253,17 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
     windows = WindowedDataset(params)
     train_ds = windows(fit_data, shuffle=True)
     val_ds = windows(val_data) if val_data is not None else None
+    return fit_model(model, train_ds, val_ds, params)
+
+
+def fit_model(model, train_ds, val_ds, params, steps_per_epoch=None):
+    """
+    Compiles and trains a model on datasets of (inputs, targets), as described
+    in compile_and_train; ``steps_per_epoch`` is needed for a repeated dataset.
+
+    Returns:
+        tuple: The training history and the model with the best weights.
+    """
     monitor = ("val_" if val_ds is not None else "") + params["metrics"][0]
     set_seed(params)
 
@@ -288,7 +299,7 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
     model.compile(loss=params["loss"], optimizer=optimizer, metrics=params["metrics"])
 
     if params["training"] is False:
-        model.fit(train_ds, epochs=1, verbose=0)
+        model.fit(train_ds, epochs=1, steps_per_epoch=steps_per_epoch, verbose=0)
         model.load_weights(file_path)
         history = load_training_history(
             model_name=model.name, out_dir=params["tmp_history_file"]
@@ -299,6 +310,7 @@ def compile_and_train(model, data, config_path="config/config.yaml"):
     history = model.fit(
         train_ds,
         epochs=params["epochs"],
+        steps_per_epoch=steps_per_epoch,
         callbacks=callbacks,
         validation_data=val_ds,
         verbose=params["verbose"],

@@ -38,11 +38,12 @@ from patterndecoder.data import get_stock_data
 from patterndecoder.evaluation import diebold_mariano
 from patterndecoder.experiments import (
     build_model,
-    parse_command,
     publish_summary,
     read_csv_rows,
     results_writer,
+    walk_forward_main,
 )
+from patterndecoder.panel import row_position
 from patterndecoder.study import load_returns, model_files
 from patterndecoder.training import split_train_validation
 from patterndecoder.utils import compile_and_train, get_model_performance, load_config
@@ -61,11 +62,6 @@ LABELS = {
     "HARX": "HAR-X",
     "Persistence": "persistence",
 }
-
-
-def row_position(count, share):
-    """First row after a share of the data, robust to floating-point error."""
-    return int(count * share + 1e-9)
 
 
 def split_window(returns, params, test_start, width=0.1):
@@ -394,23 +390,7 @@ def summarize(paths, out_path=None):
 
 def main():
     """Command line entry point."""
-
-    def add_run_arguments(run_parser):
-        run_parser.add_argument("--seed", type=int, required=True)
-        run_parser.add_argument("--test-start", type=float, required=True)
-        run_parser.add_argument("--width", type=float, default=0.1)
-        run_parser.add_argument("--out", required=True)
-
-    def add_summary_arguments(summary_parser):
-        summary_parser.add_argument("--out", help="CSV file for the pooled results")
-
-    args = parse_command(
-        __doc__.split("\n\n", maxsplit=1)[0], add_run_arguments, add_summary_arguments
-    )
-    if args.command == "run":
-        run(args.seed, args.test_start, args.out, args.width)
-    else:
-        summarize(args.paths, args.out)
+    walk_forward_main(__doc__.split("\n\n", maxsplit=1)[0], run, summarize)
 
 
 if __name__ == "__main__":

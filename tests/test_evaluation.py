@@ -10,7 +10,12 @@ import numpy as np
 import pandas as pd
 
 from patterndecoder.data import data_checksum, get_stock_data
-from patterndecoder.evaluation import MedianForecast, diebold_mariano, forecast_diagnostics
+from patterndecoder.evaluation import (
+    MedianForecast,
+    diebold_mariano,
+    forecast_diagnostics,
+    newey_west_test,
+)
 from patterndecoder.training import split_train_validation
 from patterndecoder.utils import WindowedDataset, load_config
 
@@ -49,6 +54,17 @@ def test_diebold_mariano_identical_forecasts():
     errors = np.random.default_rng(5).normal(0, 1, 100)
     result = diebold_mariano(errors, errors)
     assert result["mean_diff"] == 0 and np.isnan(result["p_value"])
+
+
+def test_newey_west_test():
+    """A series with a clear positive mean is significant; autocorrelation widens the test."""
+    rng = np.random.default_rng(6)
+    noise = rng.normal(0, 1, 2000)
+    result = newey_west_test(0.15 + noise)
+    assert result["mean"] > 0 and result["p_value"] < 0.001 and result["n"] == 2000
+    persistent = np.convolve(noise, np.ones(10), mode="same") / 10
+    naive = persistent.mean() / (persistent.std() / np.sqrt(persistent.size))
+    assert abs(newey_west_test(persistent, max_lag=20)["statistic"]) < abs(naive)
 
 
 def test_forecast_diagnostics():

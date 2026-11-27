@@ -1,6 +1,7 @@
 # pylint: disable=E1101
 """
-Shared helpers for the experiment scripts (tuning.py and study.py).
+Shared helpers for the experiment scripts (tuning.py, study.py, robustness.py
+and cross_section.py).
 """
 
 import argparse
@@ -87,3 +88,26 @@ def parse_command(description, add_run_arguments, add_summary_arguments=None):
     if add_summary_arguments:
         add_summary_arguments(summary_parser)
     return parser.parse_args()
+
+
+def walk_forward_main(description, run, summarize):
+    """
+    Command line of the walk-forward scripts (robustness.py, cross_section.py):
+    ``run`` trains for one seed and one test window, ``summarize`` reads the
+    CSV files of the runs.
+    """
+
+    def add_run_arguments(run_parser):
+        run_parser.add_argument("--seed", type=int, required=True)
+        run_parser.add_argument("--test-start", type=float, required=True)
+        run_parser.add_argument("--width", type=float, default=0.1)
+        run_parser.add_argument("--out", required=True)
+
+    def add_summary_arguments(summary_parser):
+        summary_parser.add_argument("--out", help="CSV file for the pooled results")
+
+    args = parse_command(description, add_run_arguments, add_summary_arguments)
+    if args.command == "run":
+        run(args.seed, args.test_start, args.out, args.width)
+    else:
+        summarize(args.paths, args.out)
