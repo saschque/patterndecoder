@@ -30,11 +30,11 @@ panel:
   with at most 10 passes and early stopping after 2 passes without a lower
   validation MAE.
 - Benchmarks: the zero forecast; a reversal rule, the LAD regression of the
-  excess return on the previous day's excess return; Linear, a linear model of
-  all inputs trained like the neural models; and, for the synthetic panel,
-  the oracle.
+  excess return on the previous day's excess return; Linear, the LAD
+  regression on all inputs of the window; and, for the synthetic panel, the
+  oracle.
 - Evaluation: the five walk-forward test windows of robustness.py (August 2023
-  to February 2026) with four seeds, forecasts averaged over the seeds. The
+  to February 2026) with ten seeds, forecasts averaged over the seeds. The
   main measure is the information coefficient (IC): the Spearman rank
   correlation between forecasts and excess returns across the stocks of a day,
   averaged over the test days and tested against zero, and against Linear and
@@ -52,6 +52,12 @@ panel:
   the synthetic panel (``ticker: SYNTH-PANEL``), whose excess returns reverse
   by 10 % of the previous day's; it shows whether the pipeline and the models
   find a cross-sectional signal of known size.
+- Changes after the positive control, before the DAX run: Linear was first a
+  linear model trained like the neural models. In the positive control its
+  training failed (37 % of the oracle's IC and a higher MAE than the zero
+  forecast, although a linear model can reach the oracle), so it is now the
+  LAD regression on all inputs. The DAX run uses ten instead of four seeds,
+  because a training job took about 10 instead of the expected 45 minutes.
 
 Usage:
     python -m patterndecoder.cross_section run --seed 1 --test-start 0.5 --out run.csv
@@ -59,7 +65,6 @@ Usage:
 """
 
 import math
-import os
 import tempfile
 from itertools import chain
 
@@ -71,7 +76,6 @@ from statsmodels.regression.quantile_regression import QuantReg
 from patterndecoder.evaluation import newey_west_test
 from patterndecoder.experiments import build_model, publish_summary, walk_forward_main
 from patterndecoder.panel import (
-    FEATURES,
     daily_ic,
     load_panel,
     long_short,
@@ -80,7 +84,6 @@ from patterndecoder.panel import (
     split_rows,
 )
 from patterndecoder.study import model_files
-from patterndecoder.training import set_seed
 from patterndecoder.utils import fit_model, load_config
 
 FIELDS = [
@@ -103,20 +106,6 @@ def dataset(inputs, targets, batch_size, seed=None):
     if seed is not None:
         data = data.shuffle(len(targets), seed=seed, reshuffle_each_iteration=True).repeat()
     return data.batch(batch_size).prefetch(tf.data.AUTOTUNE)
-
-
-def linear_model(params):
-    """Linear model of all inputs of a window."""
-    tf.keras.backend.clear_session()
-    set_seed(params)
-    return tf.keras.Sequential(
-        [
-            tf.keras.Input((params["window_size"], len(FEATURES))),
-            tf.keras.layers.Flatten(),
-            tf.keras.layers.Dense(1),
-        ],
-        name="Linear",
-    )
 
 
 def train(model, sets, params):
@@ -146,20 +135,28 @@ def reversal_design(inputs):
     return np.column_stack([np.ones(len(inputs)), inputs[:, -1, 0].astype(float)])
 
 
-def reversal_forecasts(fit, target):
+def window_design(inputs):
+    """Regressors of Linear: a constant and all inputs of the window."""
+    return np.column_stack([np.ones(len(inputs)), inputs.reshape(len(inputs), -1).astype(float)])
+
+
+def lad_forecasts(fit, target, design=reversal_design):
     """Forecasts for the ``target`` windows of the LAD regression fitted on the ``fit`` windows."""
-    coefficients = QuantReg(fit[1].astype(float), reversal_design(fit[0])).fit(q=0.5).params
-    return reversal_design(target[0]) @ coefficients
+    coefficients = QuantReg(fit[1].astype(float), design(fit[0])).fit(q=0.5).params
+    return design(target[0]) @ coefficients
 
 
 def benchmark_forecasts(sets, data):
-    """Validation and test forecasts of the zero forecast, the reversal rule and the oracle."""
+    """Validation and test forecasts of the zero forecast, the LAD benchmarks and the oracle."""
     training = tuple(np.concatenate([sets["fit"][i], sets["val"][i]]) for i in range(3))
     forecasts = {
         "Naive": {name: np.zeros(len(sets[name][1])) for name in ("val", "test")},
-        "Reversal": {
-            "val": reversal_forecasts(sets["fit"], sets["val"]),
-            "test": reversal_forecasts(training, sets["test"]),
+        **{
+            name: {
+                "val": lad_forecasts(sets["fit"], sets["val"], design),
+                "test": lad_forecasts(training, sets["test"], design),
+            }
+            for name, design in (("Reversal", reversal_design), ("Linear", window_design))
         },
     }
     if "oracle" in data:
@@ -195,13 +192,10 @@ def forecast_rows(name, forecasts, sets, data, run_id):
 
 
 def trained_forecasts(params, sets, workdir):
-    """Yields the name and the forecasts of each model of models/*.yaml and of Linear."""
+    """Yields the name and the forecasts of each model of models/*.yaml."""
     for model_yaml in model_files():
         model, config_path = build_model(params, model_yaml, workdir)
         yield load_config(model_yaml)["name"], train(model, sets, load_config(config_path))
-    settings = dict(params, tmp_weights_file=os.path.join(workdir, ""))
-    settings["tmp_history_file"] = settings["tmp_weights_file"]
-    yield "Linear", train(linear_model(settings), sets, settings)
 
 
 def run(seed, test_start, out_path, width=0.1, config_path="config/config.yaml"):

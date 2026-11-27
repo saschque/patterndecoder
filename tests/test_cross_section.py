@@ -11,13 +11,15 @@ from patterndecoder import cross_section, panel
 from tests.test_smoke import write_config
 
 
-def test_reversal_forecasts_recover_the_slope():
-    """The LAD regression of the reversal rule finds a known slope despite fat tails."""
+def test_lad_forecasts_recover_the_slope():
+    """Both LAD benchmarks find a known reversal despite fat tails."""
     rng = np.random.default_rng(0)
-    inputs = rng.normal(0, 1, (4000, 30, 4)).astype("float32")
-    targets = (-0.2 * inputs[:, -1, 0] + rng.laplace(0, 0.5, 4000)).astype("float32")
-    forecasts = cross_section.reversal_forecasts((inputs, targets), (inputs[:5], targets[:5]))
-    np.testing.assert_allclose(forecasts, -0.2 * inputs[:5, -1, 0], atol=0.05)
+    inputs = rng.normal(0, 1, (20000, 30, 4)).astype("float32")
+    targets = (-0.2 * inputs[:, -1, 0] + rng.laplace(0, 0.5, 20000)).astype("float32")
+    designs = ((cross_section.reversal_design, 0.05), (cross_section.window_design, 0.2))
+    for design, tolerance in designs:
+        forecasts = cross_section.lad_forecasts((inputs, targets), (inputs[:5], None), design)
+        np.testing.assert_allclose(forecasts, -0.2 * inputs[:5, -1, 0], atol=tolerance)
 
 
 def test_run_and_summarize_on_the_synthetic_panel(tmp_path, monkeypatch):
