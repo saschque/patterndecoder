@@ -65,3 +65,57 @@ Test windows: 2023-08-07 to 2024-02-02; 2024-02-05 to 2024-08-05; 2024-08-06 to 
 2. **No neural model learns them as well.** Every model is significantly worse than HAR-X: by 18 % to 26 % on the DAX and by 52 % to 83 % on the S&P 500. On the DAX, the models are about as good as plain HAR (3 % to 10 % worse, significantly so for 3 of the 13) and better than persistence and, except for three models, than the EWMA. On the S&P 500, all 13 are significantly worse than HAR and worse than persistence and the EWMA; they beat only the constant median.
 3. **The PatternDecoder does not stand out.** It ranks 5th of the 13 models on the DAX (19.7 % behind HAR-X) and 8th on the S&P 500 (77.2 % behind). The models with convolutional attention lead: DecoderOnlyTransformer_Conv and PatternDecoder_Conv are first and second on the DAX; PatternDecoder_Conv, Transformer_Conv and DecoderOnlyTransformer_Conv are the first three on the S&P 500.
 4. **What the comparison leaves open.** The models see only the calendar features of past days and have to infer the target day's position, for example that the next day is the third Friday of a month; HAR-X gets it directly. Giving the models the target day's calendar features would need known-future inputs, which the pipeline does not have. Their weak results on the S&P 500, behind even persistence, also show that they do not track a slowly moving level well from 30 days of input.
+
+## Extension: the calendar of the target day
+
+Design, fixed in `patterndecoder/volume.py` after the results above and before these runs: the models also get the calendar of the target day. With `calendar: next`, every input row carries the calendar features of the following trading day, so the last row carries those of the target day; once with the cyclical calendar features only and once with the expiry dummies of HAR-X added (`expiry_features: true`). All other settings are unchanged; ten seeds and five test windows as above. The benchmarks are the same, so their results do not change.
+
+### DAX (`^GDAXI`)
+
+MAE relative to HAR-X, rank among the 13 models in brackets:
+
+| Model | Calendar of past days | Calendar of the target day | With expiry dummies |
+|---|---|---|---|
+| DecoderOnlyTransformer_Conv | +18.0 % (1) | +16.3 % (1) | +15.7 % (1) |
+| PatternDecoder_Conv | +18.1 % (2) | +16.6 % (2) | +16.1 % (2) |
+| PatternDecoderNoConvBlock | +18.7 % (3) | +18.7 % (7) | +16.3 % (3) |
+| DecoderOnlyTransformer | +20.0 % (6) | +17.9 % (5) | +16.8 % (4) |
+| PatternDecoderNoLstmBlock | +18.7 % (4) | +17.2 % (3) | +16.8 % (5) |
+| PatternDecoder | +19.7 % (5) | +17.6 % (4) | +17.3 % (6) |
+| Transformer | +20.9 % (8) | +21.1 % (10) | +18.2 % (7) |
+| Transformer_Logsparse | +20.6 % (7) | +20.3 % (8) | +18.4 % (8) |
+| Transformer_Conv | +21.3 % (9) | +18.4 % (6) | +18.9 % (9) |
+| PatternDecoderBlockNoCrossAttention | +21.4 % (10) | +20.5 % (9) | +20.7 % (10) |
+| PatternDecoder_Autocorr | +22.6 % (12) | +22.6 % (11) | +23.3 % (11) |
+| Autoformer | +22.4 % (11) | +23.3 % (12) | +23.5 % (12) |
+| Informer | +25.7 % (13) | +24.0 % (13) | +23.8 % (13) |
+| Mean over the models | +20.6 % | +19.6 % | +18.9 % |
+| Mean validation MAE | 0.19915 | 0.19761 | 0.19665 |
+
+### S&P 500 (`^GSPC`)
+
+MAE relative to HAR-X, rank among the 13 models in brackets:
+
+| Model | Calendar of past days | Calendar of the target day | With expiry dummies |
+|---|---|---|---|
+| Transformer_Conv | +55.6 % (2) | +56.7 % (2) | +53.2 % (1) |
+| PatternDecoder_Conv | +51.7 % (1) | +53.4 % (1) | +58.2 % (2) |
+| DecoderOnlyTransformer_Conv | +56.3 % (3) | +59.3 % (3) | +61.5 % (3) |
+| DecoderOnlyTransformer | +76.6 % (7) | +72.9 % (7) | +67.8 % (4) |
+| Transformer | +69.3 % (4) | +69.8 % (4) | +70.0 % (5) |
+| Transformer_Logsparse | +72.4 % (6) | +70.3 % (5) | +70.4 % (6) |
+| PatternDecoderNoLstmBlock | +77.3 % (9) | +76.3 % (9) | +70.9 % (7) |
+| PatternDecoder | +77.2 % (8) | +73.8 % (8) | +72.0 % (8) |
+| PatternDecoderNoConvBlock | +79.4 % (11) | +77.0 % (10) | +77.0 % (9) |
+| Autoformer | +77.8 % (10) | +78.0 % (11) | +77.4 % (10) |
+| PatternDecoderBlockNoCrossAttention | +71.2 % (5) | +71.3 % (6) | +79.0 % (11) |
+| PatternDecoder_Autocorr | +79.5 % (12) | +80.3 % (12) | +79.8 % (12) |
+| Informer | +83.3 % (13) | +83.1 % (13) | +83.0 % (13) |
+| Mean over the models | +71.3 % | +70.9 % | +70.8 % |
+| Mean validation MAE | 0.13188 | 0.13181 | 0.13138 |
+
+**Findings.**
+
+1. **The calendar is not what the models lack.** The target day's calendar narrows the gap to HAR-X a little on the DAX (on average from 20.6 % to 19.6 %, with the expiry dummies to 18.9 %) and hardly at all on the S&P 500 (71.3 %, 70.9 %, 70.8 %). Every model stays significantly worse than HAR-X, and none beats plain HAR. The validation MAE also falls slightly, so by that criterion the version with the expiry dummies would be chosen.
+2. **The PatternDecoder improves like the others.** On the DAX it moves from 19.7 % to 17.3 % behind HAR-X (ranks 5, 4 and 6), on the S&P 500 from 77.2 % to 72.0 % (rank 8 in all three).
+3. **The models do not follow the level.** On the S&P 500, the volume of the test windows in 2025 lies about 0.20 above the training median in centred log volume, but the PatternDecoder's forecasts for seed 1 average +0.05 and 0.00 there; in the earlier windows the volume lies below the training median, and the forecasts again stay close to it. The models pull their forecasts towards the level of the training data instead of following the current level, which persistence and HAR do by construction. Normalizing each input window by its own level and adding that level back to the forecast (reversible instance normalization, as used by recent Transformer forecasters) addresses this and would be the next step.

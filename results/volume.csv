@@ -1,37 +1,109 @@
-market,ticker,model,days,ensemble_mae,single_run_mae,vs_HARX_%,p_vs_HARX,vs_HAR_%,p_vs_HAR,val_mae
-DAX,^GDAXI,HARX,638,0.1725647,0.1725647,0.0,nan,-12.696,0.0,0.1742276
-DAX,^GDAXI,HAR,638,0.1976593,0.1976593,14.542,0.0,0.0,nan,0.1997407
-DAX,^GDAXI,DecoderOnlyTransformer_Conv,638,0.2036083,0.2066299,17.99,0.0,3.01,0.3486,0.1978657
-DAX,^GDAXI,PatternDecoder_Conv,638,0.203765,0.2072492,18.08,0.0,3.089,0.3365,0.1971959
-DAX,^GDAXI,PatternDecoderNoConvBlock,638,0.204896,0.2075643,18.736,0.0,3.661,0.2593,0.1983011
-DAX,^GDAXI,PatternDecoderNoLstmBlock,638,0.2049103,0.2074825,18.744,0.0,3.668,0.267,0.19855
-DAX,^GDAXI,PatternDecoder,638,0.2064787,0.2092011,19.653,0.0,4.462,0.1805,0.1987515
-DAX,^GDAXI,DecoderOnlyTransformer,638,0.207062,0.209744,19.991,0.0,4.757,0.1562,0.1993769
-DAX,^GDAXI,Transformer_Logsparse,638,0.2081204,0.2110063,20.604,0.0,5.293,0.1271,0.2003587
-DAX,^GDAXI,Transformer,638,0.2086868,0.2118205,20.932,0.0,5.579,0.1078,0.1998852
-DAX,^GDAXI,Transformer_Conv,638,0.2092749,0.2122609,21.273,0.0,5.877,0.0861,0.1986828
-DAX,^GDAXI,PatternDecoderBlockNoCrossAttention,638,0.2094205,0.2125208,21.358,0.0,5.95,0.0903,0.200132
-DAX,^GDAXI,EWMA,638,0.2100691,0.2100691,21.734,0.0,6.278,0.0254,0.2103115
-DAX,^GDAXI,Autoformer,638,0.2112223,0.212524,22.402,0.0,6.862,0.0422,0.1991589
-DAX,^GDAXI,PatternDecoder_Autocorr,638,0.2115422,0.2134512,22.587,0.0,7.024,0.0474,0.1981951
-DAX,^GDAXI,Informer,638,0.2169096,0.2195771,25.698,0.0,9.739,0.0096,0.2024972
-DAX,^GDAXI,Persistence,638,0.2284648,0.2284648,32.394,0.0,15.585,0.0,0.2380077
-DAX,^GDAXI,Median,638,0.2447861,0.2447861,41.852,0.0,23.842,0.0,0.2204506
-S&P 500,^GSPC,HARX,628,0.0948415,0.0948415,0.0,nan,-8.218,0.0025,0.0916471
-S&P 500,^GSPC,HAR,628,0.1033333,0.1033333,8.954,0.0025,0.0,nan,0.1014182
-S&P 500,^GSPC,Persistence,628,0.1123928,0.1123928,18.506,0.0002,8.767,0.0015,0.1149727
-S&P 500,^GSPC,EWMA,628,0.1151632,0.1151632,21.427,0.0,11.448,0.0023,0.1132427
-S&P 500,^GSPC,PatternDecoder_Conv,628,0.143836,0.1464749,51.659,0.0,39.196,0.0,0.1239837
-S&P 500,^GSPC,Transformer_Conv,628,0.1475291,0.1498013,55.553,0.0,42.77,0.0,0.1262439
-S&P 500,^GSPC,DecoderOnlyTransformer_Conv,628,0.1482779,0.151201,56.343,0.0,43.495,0.0,0.1259349
-S&P 500,^GSPC,Transformer,628,0.1606141,0.1620991,69.35,0.0,55.433,0.0,0.1316285
-S&P 500,^GSPC,PatternDecoderBlockNoCrossAttention,628,0.1623232,0.1642629,71.152,0.0,57.087,0.0,0.1327744
-S&P 500,^GSPC,Transformer_Logsparse,628,0.163473,0.1644577,72.365,0.0,58.2,0.0,0.1326741
-S&P 500,^GSPC,DecoderOnlyTransformer,628,0.1675028,0.168744,76.613,0.0,62.099,0.0,0.1336314
-S&P 500,^GSPC,PatternDecoder,628,0.1680677,0.1692105,77.209,0.0,62.646,0.0,0.1345667
-S&P 500,^GSPC,PatternDecoderNoLstmBlock,628,0.1681271,0.1695644,77.272,0.0,62.704,0.0,0.1338628
-S&P 500,^GSPC,Autoformer,628,0.1685992,0.1691649,77.769,0.0,63.16,0.0,0.1346763
-S&P 500,^GSPC,PatternDecoderNoConvBlock,628,0.1701202,0.1710359,79.373,0.0,64.632,0.0,0.1350815
-S&P 500,^GSPC,PatternDecoder_Autocorr,628,0.1701933,0.171041,79.45,0.0,64.703,0.0,0.1343887
-S&P 500,^GSPC,Informer,628,0.1738197,0.1746048,83.274,0.0,68.213,0.0,0.1349666
-S&P 500,^GSPC,Median,628,0.1850126,0.1850126,95.076,0.0,79.044,0.0,0.1519232
+market,ticker,inputs,model,days,ensemble_mae,single_run_mae,vs_HARX_%,p_vs_HARX,vs_HAR_%,p_vs_HAR,val_mae
+DAX,^GDAXI,calendar of past days,HARX,638,0.1725647,0.1725647,0.0,nan,-12.696,0.0,0.1742276
+DAX,^GDAXI,calendar of past days,HAR,638,0.1976593,0.1976593,14.542,0.0,0.0,nan,0.1997407
+DAX,^GDAXI,calendar of past days,DecoderOnlyTransformer_Conv,638,0.2036083,0.2066299,17.99,0.0,3.01,0.3486,0.1978657
+DAX,^GDAXI,calendar of past days,PatternDecoder_Conv,638,0.203765,0.2072492,18.08,0.0,3.089,0.3365,0.1971959
+DAX,^GDAXI,calendar of past days,PatternDecoderNoConvBlock,638,0.204896,0.2075643,18.736,0.0,3.661,0.2593,0.1983011
+DAX,^GDAXI,calendar of past days,PatternDecoderNoLstmBlock,638,0.2049103,0.2074825,18.744,0.0,3.668,0.267,0.19855
+DAX,^GDAXI,calendar of past days,PatternDecoder,638,0.2064787,0.2092011,19.653,0.0,4.462,0.1805,0.1987515
+DAX,^GDAXI,calendar of past days,DecoderOnlyTransformer,638,0.207062,0.209744,19.991,0.0,4.757,0.1562,0.1993769
+DAX,^GDAXI,calendar of past days,Transformer_Logsparse,638,0.2081204,0.2110063,20.604,0.0,5.293,0.1271,0.2003587
+DAX,^GDAXI,calendar of past days,Transformer,638,0.2086868,0.2118205,20.932,0.0,5.579,0.1078,0.1998852
+DAX,^GDAXI,calendar of past days,Transformer_Conv,638,0.2092749,0.2122609,21.273,0.0,5.877,0.0861,0.1986828
+DAX,^GDAXI,calendar of past days,PatternDecoderBlockNoCrossAttention,638,0.2094205,0.2125208,21.358,0.0,5.95,0.0903,0.200132
+DAX,^GDAXI,calendar of past days,EWMA,638,0.2100691,0.2100691,21.734,0.0,6.278,0.0254,0.2103115
+DAX,^GDAXI,calendar of past days,Autoformer,638,0.2112223,0.212524,22.402,0.0,6.862,0.0422,0.1991589
+DAX,^GDAXI,calendar of past days,PatternDecoder_Autocorr,638,0.2115422,0.2134512,22.587,0.0,7.024,0.0474,0.1981951
+DAX,^GDAXI,calendar of past days,Informer,638,0.2169096,0.2195771,25.698,0.0,9.739,0.0096,0.2024972
+DAX,^GDAXI,calendar of past days,Persistence,638,0.2284648,0.2284648,32.394,0.0,15.585,0.0,0.2380077
+DAX,^GDAXI,calendar of past days,Median,638,0.2447861,0.2447861,41.852,0.0,23.842,0.0,0.2204506
+DAX,^GDAXI,calendar of the target day,HARX,638,0.1725647,0.1725647,0.0,nan,-12.696,0.0,0.1742276
+DAX,^GDAXI,calendar of the target day,HAR,638,0.1976593,0.1976593,14.542,0.0,0.0,nan,0.1997407
+DAX,^GDAXI,calendar of the target day,DecoderOnlyTransformer_Conv,638,0.200655,0.2036443,16.278,0.0,1.516,0.6329,0.19622
+DAX,^GDAXI,calendar of the target day,PatternDecoder_Conv,638,0.2012472,0.2052117,16.621,0.0,1.815,0.5681,0.1960688
+DAX,^GDAXI,calendar of the target day,PatternDecoderNoLstmBlock,638,0.2022907,0.205787,17.226,0.0,2.343,0.4798,0.1955143
+DAX,^GDAXI,calendar of the target day,PatternDecoder,638,0.2029525,0.2067375,17.61,0.0,2.678,0.4198,0.1959355
+DAX,^GDAXI,calendar of the target day,DecoderOnlyTransformer,638,0.2034782,0.2073682,17.914,0.0,2.944,0.3752,0.1965451
+DAX,^GDAXI,calendar of the target day,Transformer_Conv,638,0.2042704,0.2080898,18.373,0.0,3.345,0.314,0.1969395
+DAX,^GDAXI,calendar of the target day,PatternDecoderNoConvBlock,638,0.2049142,0.2072432,18.746,0.0,3.67,0.2738,0.1965109
+DAX,^GDAXI,calendar of the target day,Transformer_Logsparse,638,0.2075495,0.2101407,20.273,0.0,5.004,0.1516,0.1986889
+DAX,^GDAXI,calendar of the target day,PatternDecoderBlockNoCrossAttention,638,0.2079262,0.2110381,20.492,0.0,5.194,0.1368,0.1994562
+DAX,^GDAXI,calendar of the target day,Transformer,638,0.2090117,0.211273,21.121,0.0,5.743,0.0982,0.1979487
+DAX,^GDAXI,calendar of the target day,EWMA,638,0.2100691,0.2100691,21.734,0.0,6.278,0.0254,0.2103115
+DAX,^GDAXI,calendar of the target day,PatternDecoder_Autocorr,638,0.2116151,0.2135434,22.629,0.0,7.061,0.0455,0.1982603
+DAX,^GDAXI,calendar of the target day,Autoformer,638,0.2127706,0.2137981,23.299,0.0,7.645,0.0266,0.1999536
+DAX,^GDAXI,calendar of the target day,Informer,638,0.2140495,0.2170735,24.04,0.0,8.292,0.0237,0.2008969
+DAX,^GDAXI,calendar of the target day,Persistence,638,0.2284648,0.2284648,32.394,0.0,15.585,0.0,0.2380077
+DAX,^GDAXI,calendar of the target day,Median,638,0.2447861,0.2447861,41.852,0.0,23.842,0.0,0.2204506
+DAX,^GDAXI,calendar of the target day with expiry dummies,HARX,638,0.1725647,0.1725647,0.0,nan,-12.696,0.0,0.1742276
+DAX,^GDAXI,calendar of the target day with expiry dummies,HAR,638,0.1976593,0.1976593,14.542,0.0,0.0,nan,0.1997407
+DAX,^GDAXI,calendar of the target day with expiry dummies,DecoderOnlyTransformer_Conv,638,0.1996783,0.2023619,15.712,0.0,1.021,0.7549,0.1951718
+DAX,^GDAXI,calendar of the target day with expiry dummies,PatternDecoder_Conv,638,0.2003538,0.2034349,16.104,0.0,1.363,0.6775,0.1952509
+DAX,^GDAXI,calendar of the target day with expiry dummies,PatternDecoderNoConvBlock,638,0.2007405,0.2032323,16.328,0.0,1.559,0.6393,0.194533
+DAX,^GDAXI,calendar of the target day with expiry dummies,DecoderOnlyTransformer,638,0.2015385,0.2044998,16.79,0.0,1.963,0.5569,0.1952663
+DAX,^GDAXI,calendar of the target day with expiry dummies,PatternDecoderNoLstmBlock,638,0.2015585,0.2043432,16.802,0.0,1.973,0.557,0.1952699
+DAX,^GDAXI,calendar of the target day with expiry dummies,PatternDecoder,638,0.2024302,0.2051984,17.307,0.0,2.414,0.4749,0.1951603
+DAX,^GDAXI,calendar of the target day with expiry dummies,Transformer,638,0.203985,0.2073878,18.208,0.0,3.2,0.3486,0.1961831
+DAX,^GDAXI,calendar of the target day with expiry dummies,Transformer_Logsparse,638,0.2042377,0.2073944,18.354,0.0,3.328,0.3275,0.197175
+DAX,^GDAXI,calendar of the target day with expiry dummies,Transformer_Conv,638,0.20514,0.2082718,18.877,0.0,3.785,0.2705,0.1961903
+DAX,^GDAXI,calendar of the target day with expiry dummies,PatternDecoderBlockNoCrossAttention,638,0.2083208,0.2110636,20.72,0.0,5.394,0.1296,0.198209
+DAX,^GDAXI,calendar of the target day with expiry dummies,EWMA,638,0.2100691,0.2100691,21.734,0.0,6.278,0.0254,0.2103115
+DAX,^GDAXI,calendar of the target day with expiry dummies,PatternDecoder_Autocorr,638,0.2127059,0.2140667,23.262,0.0,7.612,0.0325,0.1984797
+DAX,^GDAXI,calendar of the target day with expiry dummies,Autoformer,638,0.2130489,0.2140913,23.46,0.0,7.786,0.023,0.199326
+DAX,^GDAXI,calendar of the target day with expiry dummies,Informer,638,0.213696,0.2161511,23.835,0.0,8.113,0.0265,0.2002041
+DAX,^GDAXI,calendar of the target day with expiry dummies,Persistence,638,0.2284648,0.2284648,32.394,0.0,15.585,0.0,0.2380077
+DAX,^GDAXI,calendar of the target day with expiry dummies,Median,638,0.2447861,0.2447861,41.852,0.0,23.842,0.0,0.2204506
+S&P 500,^GSPC,calendar of past days,HARX,628,0.0948415,0.0948415,0.0,nan,-8.218,0.0025,0.0916471
+S&P 500,^GSPC,calendar of past days,HAR,628,0.1033333,0.1033333,8.954,0.0025,0.0,nan,0.1014182
+S&P 500,^GSPC,calendar of past days,Persistence,628,0.1123928,0.1123928,18.506,0.0002,8.767,0.0015,0.1149727
+S&P 500,^GSPC,calendar of past days,EWMA,628,0.1151632,0.1151632,21.427,0.0,11.448,0.0023,0.1132427
+S&P 500,^GSPC,calendar of past days,PatternDecoder_Conv,628,0.143836,0.1464749,51.659,0.0,39.196,0.0,0.1239837
+S&P 500,^GSPC,calendar of past days,Transformer_Conv,628,0.1475291,0.1498013,55.553,0.0,42.77,0.0,0.1262439
+S&P 500,^GSPC,calendar of past days,DecoderOnlyTransformer_Conv,628,0.1482779,0.151201,56.343,0.0,43.495,0.0,0.1259349
+S&P 500,^GSPC,calendar of past days,Transformer,628,0.1606141,0.1620991,69.35,0.0,55.433,0.0,0.1316285
+S&P 500,^GSPC,calendar of past days,PatternDecoderBlockNoCrossAttention,628,0.1623232,0.1642629,71.152,0.0,57.087,0.0,0.1327744
+S&P 500,^GSPC,calendar of past days,Transformer_Logsparse,628,0.163473,0.1644577,72.365,0.0,58.2,0.0,0.1326741
+S&P 500,^GSPC,calendar of past days,DecoderOnlyTransformer,628,0.1675028,0.168744,76.613,0.0,62.099,0.0,0.1336314
+S&P 500,^GSPC,calendar of past days,PatternDecoder,628,0.1680677,0.1692105,77.209,0.0,62.646,0.0,0.1345667
+S&P 500,^GSPC,calendar of past days,PatternDecoderNoLstmBlock,628,0.1681271,0.1695644,77.272,0.0,62.704,0.0,0.1338628
+S&P 500,^GSPC,calendar of past days,Autoformer,628,0.1685992,0.1691649,77.769,0.0,63.16,0.0,0.1346763
+S&P 500,^GSPC,calendar of past days,PatternDecoderNoConvBlock,628,0.1701202,0.1710359,79.373,0.0,64.632,0.0,0.1350815
+S&P 500,^GSPC,calendar of past days,PatternDecoder_Autocorr,628,0.1701933,0.171041,79.45,0.0,64.703,0.0,0.1343887
+S&P 500,^GSPC,calendar of past days,Informer,628,0.1738197,0.1746048,83.274,0.0,68.213,0.0,0.1349666
+S&P 500,^GSPC,calendar of past days,Median,628,0.1850126,0.1850126,95.076,0.0,79.044,0.0,0.1519232
+S&P 500,^GSPC,calendar of the target day,HARX,628,0.0948415,0.0948415,0.0,nan,-8.218,0.0025,0.0916471
+S&P 500,^GSPC,calendar of the target day,HAR,628,0.1033333,0.1033333,8.954,0.0025,0.0,nan,0.1014182
+S&P 500,^GSPC,calendar of the target day,Persistence,628,0.1123928,0.1123928,18.506,0.0002,8.767,0.0015,0.1149727
+S&P 500,^GSPC,calendar of the target day,EWMA,628,0.1151632,0.1151632,21.427,0.0,11.448,0.0023,0.1132427
+S&P 500,^GSPC,calendar of the target day,PatternDecoder_Conv,628,0.1454929,0.14805,53.406,0.0,40.8,0.0,0.1239861
+S&P 500,^GSPC,calendar of the target day,Transformer_Conv,628,0.1486426,0.1509234,56.727,0.0,43.848,0.0,0.1272826
+S&P 500,^GSPC,calendar of the target day,DecoderOnlyTransformer_Conv,628,0.151044,0.1532849,59.259,0.0,46.172,0.0,0.1270531
+S&P 500,^GSPC,calendar of the target day,Transformer,628,0.1610072,0.162169,69.765,0.0,55.813,0.0,0.1320188
+S&P 500,^GSPC,calendar of the target day,Transformer_Logsparse,628,0.1614786,0.1625997,70.262,0.0,56.27,0.0,0.1322021
+S&P 500,^GSPC,calendar of the target day,PatternDecoderBlockNoCrossAttention,628,0.1624412,0.1640406,71.277,0.0,57.201,0.0,0.1330971
+S&P 500,^GSPC,calendar of the target day,DecoderOnlyTransformer,628,0.1639389,0.1651667,72.856,0.0,58.65,0.0,0.1323053
+S&P 500,^GSPC,calendar of the target day,PatternDecoder,628,0.1648522,0.1661394,73.819,0.0,59.534,0.0,0.1329691
+S&P 500,^GSPC,calendar of the target day,PatternDecoderNoLstmBlock,628,0.1671741,0.1680716,76.267,0.0,61.781,0.0,0.1341215
+S&P 500,^GSPC,calendar of the target day,PatternDecoderNoConvBlock,628,0.1678814,0.1686384,77.013,0.0,62.466,0.0,0.1342699
+S&P 500,^GSPC,calendar of the target day,Autoformer,628,0.1688266,0.1694169,78.009,0.0,63.381,0.0,0.1345768
+S&P 500,^GSPC,calendar of the target day,PatternDecoder_Autocorr,628,0.1709862,0.1719995,80.286,0.0,65.471,0.0,0.1346113
+S&P 500,^GSPC,calendar of the target day,Informer,628,0.1736108,0.1743372,83.054,0.0,68.01,0.0,0.1350413
+S&P 500,^GSPC,calendar of the target day,Median,628,0.1850126,0.1850126,95.076,0.0,79.044,0.0,0.1519232
+S&P 500,^GSPC,calendar of the target day with expiry dummies,HARX,628,0.0948415,0.0948415,0.0,nan,-8.218,0.0025,0.0916471
+S&P 500,^GSPC,calendar of the target day with expiry dummies,HAR,628,0.1033333,0.1033333,8.954,0.0025,0.0,nan,0.1014182
+S&P 500,^GSPC,calendar of the target day with expiry dummies,Persistence,628,0.1123928,0.1123928,18.506,0.0002,8.767,0.0015,0.1149727
+S&P 500,^GSPC,calendar of the target day with expiry dummies,EWMA,628,0.1151632,0.1151632,21.427,0.0,11.448,0.0023,0.1132427
+S&P 500,^GSPC,calendar of the target day with expiry dummies,Transformer_Conv,628,0.1452923,0.1479171,53.195,0.0,40.605,0.0,0.1248452
+S&P 500,^GSPC,calendar of the target day with expiry dummies,PatternDecoder_Conv,628,0.1500547,0.1524728,58.216,0.0,45.214,0.0,0.1270881
+S&P 500,^GSPC,calendar of the target day with expiry dummies,DecoderOnlyTransformer_Conv,628,0.1531613,0.1557087,61.492,0.0,48.221,0.0,0.1278487
+S&P 500,^GSPC,calendar of the target day with expiry dummies,DecoderOnlyTransformer,628,0.159169,0.160771,67.826,0.0,54.034,0.0,0.1288536
+S&P 500,^GSPC,calendar of the target day with expiry dummies,Transformer,628,0.1612123,0.1628824,69.981,0.0,56.012,0.0,0.1323072
+S&P 500,^GSPC,calendar of the target day with expiry dummies,Transformer_Logsparse,628,0.1616511,0.1636205,70.443,0.0,56.437,0.0,0.1322715
+S&P 500,^GSPC,calendar of the target day with expiry dummies,PatternDecoderNoLstmBlock,628,0.1621162,0.1636045,70.934,0.0,56.887,0.0,0.1305272
+S&P 500,^GSPC,calendar of the target day with expiry dummies,PatternDecoder,628,0.1631599,0.1645889,72.034,0.0,57.897,0.0,0.1314643
+S&P 500,^GSPC,calendar of the target day with expiry dummies,PatternDecoderNoConvBlock,628,0.1678905,0.1685894,77.022,0.0,62.475,0.0,0.134601
+S&P 500,^GSPC,calendar of the target day with expiry dummies,Autoformer,628,0.1682874,0.1689239,77.441,0.0,62.859,0.0,0.1333344
+S&P 500,^GSPC,calendar of the target day with expiry dummies,PatternDecoderBlockNoCrossAttention,628,0.1698101,0.1707479,79.046,0.0,64.332,0.0,0.136301
+S&P 500,^GSPC,calendar of the target day with expiry dummies,PatternDecoder_Autocorr,628,0.1704947,0.1712345,79.768,0.0,64.995,0.0,0.133379
+S&P 500,^GSPC,calendar of the target day with expiry dummies,Informer,628,0.1735663,0.1743664,83.007,0.0,67.967,0.0,0.1351434
+S&P 500,^GSPC,calendar of the target day with expiry dummies,Median,628,0.1850126,0.1850126,95.076,0.0,79.044,0.0,0.1519232
