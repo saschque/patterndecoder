@@ -1,11 +1,14 @@
 """
 Panel of stocks for the cross-section study (patterndecoder/cross_section.py).
 
-``UNIVERSE`` lists the 40 members of the DAX on 20 March 2023 with their Xetra
-tickers on Yahoo Finance. ``write_panel`` downloads their daily prices, adjusted
-for dividends and splits, with high, low and volume for the date range of the
-config (``ticker: DAX-PANEL``), or generates the synthetic panel (``ticker:
-SYNTH-PANEL``), and writes them to ``<data_path>panel_<ticker>.csv``.
+``UNIVERSE`` lists the 40 members of the DAX on 20 March 2023 and
+``SDAX_UNIVERSE`` the 71 companies of the SDAX table of the English Wikipedia,
+stated as of the index review of 10 September 2020, with their Xetra tickers on
+Yahoo Finance (for renamed companies the current ticker). ``write_panel``
+downloads their daily prices, adjusted for dividends and splits, with high, low
+and volume for the date range of the config (``ticker: DAX-PANEL`` or
+``SDAX-PANEL``), or generates the synthetic panel (``ticker: SYNTH-PANEL``), and
+writes them to ``<data_path>panel_<ticker>.csv``.
 ``panel_data`` turns a panel into input features and targets, ``panel_windows``
 into samples, and ``daily_ic`` and ``long_short`` measure cross-sectional
 forecasts.
@@ -36,6 +39,20 @@ UNIVERSE = (
     "MTX.DE", "MUV2.DE", "P911.DE", "PAH3.DE", "QIA.DE", "RHM.DE", "RWE.DE", "SAP.DE",
     "SRT3.DE", "SIE.DE", "ENR.DE", "SHL.DE", "SY1.DE", "VOW3.DE", "VNA.DE", "ZAL.DE",
 )
+SDAX_PANEL = "SDAX-PANEL"
+SDAX_UNIVERSE = (
+    "1U1.DE", "ADJ.DE", "ADV.DE", "AAD.DE", "AOF.DE", "BYW6.DE", "BFSA.DE", "BDT.DE",
+    "GBF.DE", "BVB.DE", "CEC.DE", "CWC.DE", "CCAP.DE", "DMP.DE", "DBAN.DE", "DEQ.DE",
+    "PBB.DE", "DEZ.DE", "DIC.DE", "BRNK.DE", "GIL.DE", "HNL.DE", "DRW3.DE", "DWS.DE",
+    "EUZ.DE", "ECV.DE", "FIE.DE", "HABA.DE", "HHFA.DE", "HBM.DE", "HBH.DE", "HYQ.DE",
+    "INH.DE", "INS.DE", "JEN.DE", "JST.DE", "JUN3.DE", "KCO.DE", "SKB.DE", "KRN.DE",
+    "KWS.DE", "LEO.DE", "LPK.DE", "NA9.DE", "NWO.DE", "NDX1.DE", "NOEJ.DE", "PAT.DE",
+    "PFV.DE", "SANT.DE", "KTN.DE", "SFQ.DE", "SZG.DE", "SHA.DE", "SHA0.DE", "SAE.DE",
+    "RDC.DE", "SIX2.DE", "S92.DE", "SHF.DE", "STM.DE", "SNH.DE", "SBS.DE", "SZU.DE",
+    "TTK.DE", "TLX.DE", "TC1.DE", "8TRA.DE", "VOS.DE", "WCH.DE", "WAC.DE", "WSU.DE",
+    "WUW.DE", "TIMA.DE", "ZO1.DE",
+)
+PANELS = {DAX_PANEL: UNIVERSE, SDAX_PANEL: SDAX_UNIVERSE}
 COLUMNS = ["Close", "High", "Low", "Volume"]
 FEATURES = ["excess_return", "panel_return", "relative_volume", "range"]
 VOLUME_DAYS = 20
@@ -144,8 +161,8 @@ def write_panel(params):
     """Downloads or generates the panel of the configured ticker and writes it to its CSV file."""
     if params["ticker"] == SYNTHETIC_PANEL:
         panel = synthetic_panel(params)
-    elif params["ticker"] == DAX_PANEL:
-        panel = download_panel(params)
+    elif params["ticker"] in PANELS:
+        panel = download_panel(params, PANELS[params["ticker"]])
     else:
         raise ValueError(f"No panel for ticker {params['ticker']!r}")
     path = panel_path(params)
@@ -175,8 +192,8 @@ def describe_panel(panel, params):
     large = returns.stack(future_stack=True)[lambda moves: moves.abs() > 0.2]
     print(f"{len(stocks)} stocks, {panel['Date'].nunique()} days; daily moves above 20 %:")
     print(large.round(4).to_string() if len(large) else "none")
-    if params["ticker"] == DAX_PANEL:
-        missing = sorted(set(UNIVERSE) - set(stocks.index))
+    if params["ticker"] in PANELS:
+        missing = sorted(set(PANELS[params["ticker"]]) - set(stocks.index))
         print(f"Tickers without data: {', '.join(missing) if missing else 'none'}")
 
 

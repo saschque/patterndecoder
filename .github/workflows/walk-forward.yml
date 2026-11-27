@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       ticker:
-        description: "Yahoo Finance ticker (^GDAXI: DAX, ^GSPC: S&P 500), SYNTH-AR, SYNTH-MOTIF, SYNTH-CYCLE, or a panel: DAX-PANEL, SYNTH-PANEL"
+        description: "Yahoo Finance ticker (^GDAXI: DAX, ^GSPC: S&P 500), SYNTH-AR, SYNTH-MOTIF, SYNTH-CYCLE, or a panel: DAX-PANEL, SDAX-PANEL, SYNTH-PANEL"
         required: true
         default: "^GDAXI"
       overrides:
