@@ -1,6 +1,6 @@
-# Cross section of the DAX stocks
+# Cross section of German stocks
 
-Results of the cross-section study (`patterndecoder/cross_section.py`), computed with the workflow "Walk-forward evaluation" (tickers `DAX-PANEL` and `SYNTH-PANEL`) on 27 November 2026. Instead of forecasting one index, the models rank the stocks of a panel by their next-day return relative to the others, where studies of single stocks have found short-term patterns such as reversal. Each trading day gives one observation per stock, so the evaluation can detect much weaker signals than on a single series. The design was fixed in `patterndecoder/cross_section.py` before any model was trained on the panel:
+Results of the cross-section study (`patterndecoder/cross_section.py`), computed with the workflow "Walk-forward evaluation" (tickers `DAX-PANEL`, `SDAX-PANEL` and `SYNTH-PANEL`) on 27 and 28 November 2026; the small caps of the SDAX follow in their own section. Instead of forecasting one index, the models rank the stocks of a panel by their next-day return relative to the others, where studies of single stocks have found short-term patterns such as reversal. Each trading day gives one observation per stock, so the evaluation can detect much weaker signals than on a single series. The design was fixed in `patterndecoder/cross_section.py` before any model was trained on the panel:
 
 - **Universe:** the 40 members of the DAX on 20 March 2023, a date before the first test window, so that the test has no survivorship bias. Stocks enter the panel when their prices start (Daimler Truck in December 2021, Porsche AG in September 2022) and stay in it after leaving the DAX. Yahoo Finance has no data for Covestro, so the panel has 39 stocks, 38.4 per test day on average.
 - **Data:** daily Xetra closing prices adjusted for dividends and splits, daily high and low and volume from Yahoo Finance, 5 February 2021 to 5 February 2026. Deutsche Post (DHL) has no reported volume on 64 days; windows that contain such a day are left out.
@@ -84,7 +84,7 @@ Comparison model (highest mean validation IC of the other models): DecoderOnlyTr
 - PatternDecoder minus DecoderOnlyTransformer_Conv: IC difference +0.0081, p = 0.381
 - PatternDecoderNoConvBlock minus DecoderOnlyTransformer_Conv: IC difference +0.0024, p = 0.792
 
-## Findings
+## Findings for the DAX
 
 1. **No cross-sectional signal is detectable.** The mean ICs of the 13 models lie between -0.019 and +0.003, and none is significantly positive; Transformer_Conv is significantly negative (p = 0.022), about what chance produces in 15 tests. Linear (+0.002) and the reversal rule (-0.015) find nothing either, the share of days with a positive IC is 46 % to 51 %, and no model is positive in all five windows.
 2. **The test would have found a modest signal.** The standard error of a mean IC is about 0.009, so a true IC of about 0.017 would be significant and one of 0.024 would be found with a probability of about 80 %. The positive control shows that the models learn an IC of 0.1 almost completely. For the large DAX stocks in 2023 to 2026, the four inputs therefore hold no signal of that size about the next day's relative return.
@@ -93,3 +93,61 @@ Comparison model (highest mean validation IC of the other models): DecoderOnlyTr
 5. **The PatternDecoder does not stand out.** It has the second highest IC of the 13 models (-0.001), but neither it nor PatternDecoderNoConvBlock differs significantly from the comparison model, DecoderOnlyTransformer_Conv (IC differences +0.008, p = 0.38, and +0.002, p = 0.79). PatternDecoderNoConvBlock, the best learner in the positive control, ranks 5th.
 
 The result matches a study of the S&P 500 stocks, where daily cross-sectional forecasts of LSTM networks were clearly profitable from 1992 to 2009, while from 2010 their profits after transaction costs fluctuated around zero (Fischer and Krauss, 2018, European Journal of Operational Research 270(2), 654-669).
+
+## SDAX panel (small caps)
+
+Designed after the DAX run and before any run on these stocks (recorded in `patterndecoder/cross_section.py`): the same study for the 71 companies of the SDAX table of the English Wikipedia, stated as of the index review of 10 September 2020, a universe fixed long before the test windows. A clean MDAX list from before the test windows was not available: the Wikipedia table, stated as of January 2023, contains later changes. Yahoo Finance has no prices for eight of the SDAX companies (Encavis, Hornbach Baumarkt, Klöckner & Co, Leoni, New Work, Steinhoff, Tele Columbus, zooplus), most of which have since been taken over or delisted, so the panel has 63 stocks, 60.4 per test day. This survivorship can favour reversal, because stocks that fell and recovered stay in the panel while some that kept falling are missing. The data are used as they are, including the extreme moves of Corestate Capital during its restructuring (-88 % and +72 % in November 2022).
+
+Test windows: 2023-08-02 to 2024-01-31; 2024-02-01 to 2024-07-31; 2024-08-01 to 2025-02-03; 2025-02-04 to 2025-08-04; 2025-08-05 to 2026-02-05. 10 seeds, 638 test days, 60.4 stocks per day. Columns as for the DAX; break-even cost: the cost per unit of turnover at which the portfolio's gross return would be used up.
+
+| Model | IC | p | days with IC > 0 | single run IC | vs Linear | p | vs reversal | p | MAE vs zero | long-short p.a. before costs | after costs | Sharpe after costs | break-even cost | val IC |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| PatternDecoderNoConvBlock (1) | 0.0398 | < 0.001 | 60.3 % | 0.0280 | +0.0122 | 0.026 | +0.0060 | 0.018 | -0.09 % | +34.3 % | -4.6 % | -0.28 | 4.4 bp | 0.0270 |
+| PatternDecoder (2) | 0.0346 | < 0.001 | 58.2 % | 0.0156 | +0.0070 | 0.232 | +0.0008 | 0.868 | -0.04 % | +36.2 % | +0.2 % | +0.01 | 5.0 bp | 0.0150 |
+| Reversal | 0.0338 | < 0.001 | 56.9 % | 0.0338 | +0.0062 | 0.324 | +0.0000 | - | -0.04 % | +29.6 % | -9.4 % | -0.52 | 3.8 bp | 0.0291 |
+| PatternDecoder_Conv (3) | 0.0328 | < 0.001 | 59.1 % | 0.0174 | +0.0052 | 0.328 | -0.0009 | 0.837 | -0.05 % | +29.6 % | -9.4 % | -0.55 | 3.8 bp | 0.0200 |
+| PatternDecoderNoLstmBlock (4) | 0.0324 | < 0.001 | 57.2 % | 0.0213 | +0.0048 | 0.351 | -0.0013 | 0.683 | -0.05 % | +29.7 % | -11.7 % | -0.70 | 3.6 bp | 0.0187 |
+| PatternDecoder_Autocorr (5) | 0.0324 | < 0.001 | 60.7 % | 0.0214 | +0.0048 | 0.382 | -0.0014 | 0.812 | -0.04 % | +27.0 % | -7.1 % | -0.44 | 4.0 bp | 0.0160 |
+| Informer (6) | 0.0307 | < 0.001 | 56.4 % | 0.0140 | +0.0031 | 0.610 | -0.0031 | 0.580 | -0.04 % | +19.4 % | -16.5 % | -1.01 | 2.7 bp | 0.0152 |
+| Transformer_Conv (7) | 0.0298 | < 0.001 | 56.1 % | 0.0138 | +0.0022 | 0.712 | -0.0039 | 0.471 | -0.04 % | +24.7 % | -15.2 % | -0.99 | 3.1 bp | 0.0182 |
+| Transformer_Logsparse (8) | 0.0296 | < 0.001 | 57.8 % | 0.0147 | +0.0020 | 0.714 | -0.0042 | 0.401 | -0.04 % | +25.9 % | -15.8 % | -1.03 | 3.1 bp | 0.0171 |
+| Transformer (9) | 0.0282 | < 0.001 | 56.3 % | 0.0133 | +0.0006 | 0.920 | -0.0056 | 0.207 | -0.03 % | +26.5 % | -12.1 % | -0.73 | 3.4 bp | 0.0178 |
+| Linear | 0.0276 | < 0.001 | 56.4 % | 0.0276 | +0.0000 | - | -0.0062 | 0.324 | +0.14 % | +18.6 % | -17.7 % | -1.05 | 2.6 bp | 0.0083 |
+| Autoformer (10) | 0.0246 | < 0.001 | 58.8 % | 0.0148 | -0.0030 | 0.583 | -0.0092 | 0.136 | -0.03 % | +19.9 % | -16.9 % | -1.06 | 2.7 bp | 0.0162 |
+| PatternDecoderBlockNoCrossAttention (11) | 0.0225 | < 0.001 | 53.8 % | 0.0117 | -0.0051 | 0.367 | -0.0113 | 0.027 | -0.02 % | +11.2 % | -24.9 % | -1.47 | 1.6 bp | 0.0151 |
+| DecoderOnlyTransformer (12) | 0.0222 | < 0.001 | 55.3 % | 0.0076 | -0.0054 | 0.446 | -0.0116 | 0.088 | -0.02 % | +19.2 % | -12.6 % | -0.80 | 3.0 bp | 0.0146 |
+| DecoderOnlyTransformer_Conv (13) | 0.0221 | < 0.001 | 56.4 % | 0.0096 | -0.0054 | 0.411 | -0.0116 | 0.093 | -0.02 % | +15.6 % | -13.2 % | -0.81 | 2.7 bp | 0.0139 |
+| Naive | - | - | - | - | - | - | - | - | +0.00 % | - | - | - | - | - |
+
+IC per test window:
+
+| Model | 2023-08-02 to 2024-01-31 | 2024-02-01 to 2024-07-31 | 2024-08-01 to 2025-02-03 | 2025-02-04 to 2025-08-04 | 2025-08-05 to 2026-02-05 |
+|---|---|---|---|---|---|
+| PatternDecoderNoConvBlock | 0.0382 | 0.0281 | 0.0353 | 0.0363 | 0.0608 |
+| PatternDecoder | 0.0334 | 0.0251 | 0.0219 | 0.0319 | 0.0606 |
+| Reversal | 0.0244 | 0.0234 | 0.0338 | 0.0384 | 0.0487 |
+| PatternDecoder_Conv | 0.0325 | 0.0213 | 0.0344 | 0.0243 | 0.0516 |
+| PatternDecoderNoLstmBlock | 0.0255 | 0.0244 | 0.0276 | 0.0324 | 0.0523 |
+| PatternDecoder_Autocorr | 0.0290 | 0.0178 | 0.0322 | 0.0429 | 0.0399 |
+| Informer | 0.0423 | 0.0216 | 0.0164 | 0.0347 | 0.0382 |
+| Transformer_Conv | 0.0124 | 0.0306 | 0.0232 | 0.0292 | 0.0537 |
+| Transformer_Logsparse | 0.0208 | 0.0218 | 0.0253 | 0.0215 | 0.0585 |
+| Transformer | 0.0221 | 0.0198 | 0.0337 | 0.0124 | 0.0528 |
+| Linear | 0.0304 | 0.0068 | 0.0283 | 0.0162 | 0.0560 |
+| Autoformer | 0.0265 | 0.0205 | 0.0327 | 0.0169 | 0.0262 |
+| PatternDecoderBlockNoCrossAttention | 0.0206 | 0.0189 | 0.0107 | 0.0306 | 0.0315 |
+| DecoderOnlyTransformer | 0.0291 | 0.0180 | 0.0263 | 0.0182 | 0.0193 |
+| DecoderOnlyTransformer_Conv | 0.0344 | 0.0185 | 0.0221 | 0.0298 | 0.0060 |
+| Naive | - | - | - | - | - |
+
+Comparison model (highest mean validation IC of the other models): Transformer_Conv
+- PatternDecoder minus Transformer_Conv: IC difference +0.0048, p = 0.377
+- PatternDecoderNoConvBlock minus Transformer_Conv: IC difference +0.0099, p = 0.043
+
+## Findings for the small caps
+
+1. **Here the models find a signal.** Every model, Linear and the reversal rule have a significantly positive IC (0.022 to 0.040 for the models, p < 0.001 throughout), positive in each of the five test windows; the IC is positive on 54 % to 61 % of the days, and the models' MAE is below that of the zero forecast, significantly for 9 of the 13. The reversal rule alone reaches 0.034: stocks that did worse than the others on one day tend to do better on the next.
+2. **The PatternDecoder variants lead.** The five best models are PatternDecoder variants. PatternDecoderNoConvBlock has the highest IC (0.040) and ranks first or second in every window; it is significantly better than Linear (p = 0.026), the reversal rule (p = 0.018) and the comparison model chosen on the validation set, Transformer_Conv (+0.010, p = 0.043, better in four of the five windows). The PatternDecoder itself is second (0.035), but does not differ significantly from the comparison model (p = 0.38). The design specified two comparisons, so with a Bonferroni correction the p-value of PatternDecoderNoConvBlock is 0.086: the hypothesis from the volume study is confirmed in direction, but not strongly. The variant without cross-attention ranks only 11th, which suggests, as a post-hoc reading, that the cross-attention to the LSTM states carries the advantage.
+3. **The seed average matters.** Single runs reach much lower ICs (0.008 to 0.028) than the forecasts averaged over ten seeds; for the PatternDecoder 0.016 instead of 0.035.
+4. **The signal does not pay for daily trading.** Before costs, the long-short portfolios earn 11 % to 36 % a year, but they turn over 2.3 to 3.3 times their capital a day, so they break even at costs of 1.6 to 5.0 basis points per unit of turnover, below the bid-ask spreads typical of small caps. After 5 basis points only the PatternDecoder's portfolio is just positive (+0.2 % a year).
+5. **Small and large caps differ.** In the DAX panel no forecast had a significantly positive IC; in the SDAX panel all have. That fits studies that find short-term reversal mainly in less liquid stocks (Avramov, Chordia and Goyal, 2006, Journal of Finance 61(5)); the survivorship of this panel may add to it, but it affects the models and the benchmarks alike.
