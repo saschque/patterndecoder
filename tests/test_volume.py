@@ -7,7 +7,7 @@ Run from the repository root with: python -m pytest tests
 import numpy as np
 import pandas as pd
 
-from patterndecoder import robustness, study, volume
+from patterndecoder import robustness, study, utils, volume
 from patterndecoder.utils import load_config
 from patterndecoder.volatility import fit_har
 
@@ -77,3 +77,27 @@ def test_series_setting_selects_the_volume(monkeypatch):
     data = study.load_returns(params)
     assert list(data.columns) == ["Close"]
     assert np.isclose(data["Close"].iloc[:25].median(), 0)
+
+
+def test_next_day_calendar_inputs():
+    """With calendar: next, each row carries the calendar of the following trading day."""
+    index = pd.bdate_range("2024-03-11", periods=6, name="Date")  # Monday 11 to Monday 18 March
+    current = utils.calendar_inputs(index)
+    following = utils.calendar_inputs(index, "next", expiry=True)
+    assert list(following.index) == list(index)
+    np.testing.assert_allclose(following.iloc[:-1, :6].to_numpy(), current.iloc[1:].to_numpy())
+    # the trading day after Thursday 14 March 2024 is a quarterly expiry Friday
+    assert following.loc["2024-03-14", ["third_friday", "quarterly_expiry"]].tolist() == [1, 1]
+    assert following.loc["2024-03-15", "third_friday"] == 0
+
+
+def test_windows_carry_the_target_day_calendar():
+    """The last input row of a window holds the calendar features of its target day."""
+    params = load_config("config/config.yaml")
+    params.update(calendar="next", expiry_features=True, input_scale=1)
+    index = pd.bdate_range("2024-01-01", periods=80, name="Date")
+    data = pd.DataFrame({"Close": np.linspace(0.0, 1.0, 80)}, index=index)
+    inputs, _ = next(iter(utils.WindowedDataset(params)(data)))
+    window = params["window_size"]
+    expected = utils.calendar_inputs(index[window : window + 1], expiry=True).to_numpy()[0]
+    np.testing.assert_allclose(inputs.numpy()[0, -1, 1:], expected, atol=1e-6)

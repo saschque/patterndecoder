@@ -116,6 +116,7 @@ HISTORY_PARAMS = [
     "loss", "metrics", "epochs", "early_stopping", "patience", "validation_split",
     "seed", "dropout", "l1_reg", "l2_reg", "d_model", "n_heads", "units",
     "n_layers_enc", "n_layers_dec", "input_scale", "target_scale", "readout", "series",
+    "calendar", "expiry_features",
 ]
 
 
@@ -409,6 +410,39 @@ def add_cyclical_calendar_features(df):
     return cal
 
 
+def add_expiry_dummies(dates):
+    """
+    Dummies for the third Friday of a month and for the third Friday of March,
+    June, September and December, when options and futures expire.
+    """
+    # pylint cannot see the date attributes of a DatetimeIndex
+    # pylint: disable=no-member
+    dates = pd.DatetimeIndex(dates)
+    third_friday = (dates.dayofweek == 4) & (dates.day >= 15) & (dates.day <= 21)
+    quarterly = third_friday & dates.month.isin((3, 6, 9, 12))
+    columns = {"third_friday": third_friday, "quarterly_expiry": quarterly}
+    return pd.DataFrame(columns, index=dates).astype(float)
+
+
+def calendar_inputs(index, calendar="current", expiry=False):
+    """
+    Calendar features of each input row: of the row's own day ("current") or of
+    the next trading day ("next"), which is known in advance, so that the last
+    row of a window carries the calendar of the target day. With ``expiry`` the
+    expiry dummies of add_expiry_dummies are added.
+    """
+    dates = pd.DatetimeIndex(index)
+    if calendar == "next":
+        dates = dates[1:].append(pd.DatetimeIndex([dates[-1] + pd.offsets.BDay(1)]))
+    elif calendar != "current":
+        raise ValueError(f"calendar must be 'current' or 'next', not {calendar!r}")
+    features = add_cyclical_calendar_features(pd.DataFrame(index=dates))
+    if expiry:
+        features = pd.concat([features, add_expiry_dummies(dates)], axis=1)
+    features.index = index
+    return features
+
+
 class WindowedDataset:
     """
     Generates sliding windows of time series data for model training.
@@ -420,7 +454,8 @@ class WindowedDataset:
     Args:
         params (dict): Configuration with window_size, forecast_horizon,
             batch_size, stride, shuffle_buffer, columns, target_column and
-            optionally input_scale (factor for the return inputs, default 1).
+            optionally input_scale (factor for the return inputs, default 1),
+            calendar ("current" or "next") and expiry_features (see calendar_inputs).
 
     Methods:
         __call__(dataframe, shuffle=False):
@@ -453,6 +488,9 @@ class WindowedDataset:
         self.target_column = params["target_column"]
         # Factor for the return inputs (not the targets): 1 keeps raw log returns
         self.input_scale = params.get("input_scale", 1)
+        # Calendar of each row's own day or of the next trading day (see calendar_inputs)
+        self.calendar = params.get("calendar", "current")
+        self.expiry = bool(params.get("expiry_features", False))
 
     def __call__(
         self, dataframe, shuffle=False, training_mode=True, multi_horizon=False
@@ -460,7 +498,7 @@ class WindowedDataset:
         dataframe = dataframe.sort_index()
 
         # -------- X (inputs) --------
-        calendar_features = add_cyclical_calendar_features(dataframe)
+        calendar_features = calendar_inputs(dataframe.index, self.calendar, self.expiry)
         base_features = dataframe[self.columns] * self.input_scale
 
         x = pd.concat([base_features, calendar_features], axis=1)

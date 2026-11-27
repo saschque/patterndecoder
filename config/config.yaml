@@ -7,6 +7,8 @@ stride: 1
 input_scale: 100  # factor for the return inputs (1: raw log returns, 100: percent; chosen on validation)
 target_scale: 1  # the output layer learns the targets times this factor; predictions stay log returns
 readout: last  # summary of the time steps before the output layer: mean (all steps) or last (chosen on validation)
+calendar: current  # calendar features of each input day (current) or of the next trading day (next)
+expiry_features: false  # add dummies for the third Friday and the quarterly expiry to the calendar features
 shuffle_buffer: 1000
 #training_params:
 # loss, learning_rate, dropout, d_model and units were chosen by the validation

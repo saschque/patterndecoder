@@ -29,14 +29,21 @@ them. The design was fixed before any model was trained on it:
 - Evaluation: the walk-forward evaluation of patterndecoder/robustness.py with
   five test windows and ten seeds; MAE in log volume relative to HAR-X and HAR,
   with Diebold-Mariano tests of the seed-averaged forecasts.
+
+Extension, fixed after the results above and before it was run: the models
+also get the calendar of the target day. With ``calendar: next``, every input
+row carries the calendar features of the following trading day, so the last
+row carries those of the target day, once with the cyclical features only and
+once with the expiry dummies of HAR-X added (``expiry_features: true``). All
+other settings are unchanged. The question is whether this closes the gap to
+HAR-X, and for which models.
 """
 
 import numpy as np
 import pandas as pd
 
+from patterndecoder.utils import add_expiry_dummies
 from patterndecoder.volatility import level_benchmarks
-
-EXPIRY_MONTHS = (3, 6, 9, 12)
 
 
 def log_volume(prices):
@@ -58,13 +65,11 @@ def calendar_dummies(dates):
     # pylint cannot see the date attributes of a DatetimeIndex
     # pylint: disable=no-member
     dates = pd.DatetimeIndex(dates)
-    third_friday = (dates.dayofweek == 4) & (dates.day >= 15) & (dates.day <= 21)
-    columns = {
+    weekdays = {
         name: dates.dayofweek == day for day, name in enumerate(("mon", "tue", "wed", "thu"))
     }
-    columns["third_friday"] = third_friday
-    columns["quarterly_expiry"] = third_friday & dates.month.isin(EXPIRY_MONTHS)
-    return pd.DataFrame(columns, index=dates).astype(float)
+    weekday_dummies = pd.DataFrame(weekdays, index=dates).astype(float)
+    return pd.concat([weekday_dummies, add_expiry_dummies(dates)], axis=1)
 
 
 def volume_benchmarks(train_data, test_data, params):
