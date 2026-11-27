@@ -119,6 +119,9 @@ def main(config_path="config/config.yaml"):
         f"{params['ticker']}: {len(dataframe)} rows, "
         f"{dataframe.index[0].date()} to {dataframe.index[-1].date()}"
     )
+    if "Volume" in dataframe:
+        missing = int((dataframe["Volume"].fillna(0) <= 0).sum())
+        summary += f", volume zero or missing on {missing} days"
     expected = params.get("data_checksum")
     if not expected:
         print(f"{summary}, no checksum configured")
