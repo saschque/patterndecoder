@@ -137,7 +137,7 @@ python -m patterndecoder.robustness run --seed 1 --test-start 0.7 --out wf/seed1
 python -m patterndecoder.robustness summarize wf/*.csv --out wf_summary.csv
 ```
 
-Two further experiments use the same evaluation. On synthetic series with a known signal (`patterndecoder/synthetic.py`, results in `results/positive_control.md`), the models learn an autoregressive signal and a recurring pattern only with the last-step readout; the PatternDecoder learns the most of the recurring pattern, in an exploratory and a confirmatory run, but only narrowly. In volatility forecasting (`patterndecoder/volatility.py`, results in `results/volatility.md`), whose design was fixed before any model was trained on it, the HAR model is better than every neural model on the DAX and the S&P 500; the best of them are the Autoformer and the PatternDecoder variant with auto-correlation.
+Three further experiments use the same evaluation. On synthetic series with a known signal (`patterndecoder/synthetic.py`, results in `results/positive_control.md`), the models learn an autoregressive signal and a recurring pattern only with the last-step readout; the PatternDecoder learns the most of the recurring pattern, in an exploratory and a confirmatory run, but only narrowly. In volatility forecasting (`patterndecoder/volatility.py`, results in `results/volatility.md`), whose design was fixed before any model was trained on it, the HAR model is better than every neural model on the DAX and the S&P 500; the best of them are the Autoformer and the PatternDecoder variant with auto-correlation. In trading volume (`patterndecoder/volume.py`, results in `results/volume.md`), which has real calendar patterns, a HAR model with weekday and expiry-day dummies is better than every neural model on both markets.
 
 ## Project Structure
 
@@ -165,7 +165,7 @@ Two further experiments use the same evaluation. On synthetic series with a know
   - `experiments.py`: Helpers shared by the tuning, study and walk-forward scripts
   - `evaluation.py`: Median baseline, Diebold-Mariano test and forecast diagnostics
 - `tests/`: Smoke tests for the models, the training pipeline, the evaluation and the walk-forward evaluation (`python -m pytest tests`)
-- `results/`: Results of the seed and layer study (`seed_layer_study.md`, `seed_layer_study.csv`; earlier setup: `seed_layer_study_mean_readout.csv`), the walk-forward evaluation (`walk_forward.md`, `walk_forward.csv`, `walk_forward_windows.csv`), the positive control (`positive_control.md`, `positive_control.csv`) and the volatility use case (`volatility.md`, `volatility.csv`, `volatility_windows.csv`)
+- `results/`: Results of the seed and layer study (`seed_layer_study.md`, `seed_layer_study.csv`; earlier setup: `seed_layer_study_mean_readout.csv`), the walk-forward evaluation (`walk_forward.md`, `walk_forward.csv`, `walk_forward_windows.csv`), the positive control (`positive_control.md`, `positive_control.csv`) the volatility use case (`volatility.md`, `volatility.csv`, `volatility_windows.csv`) and the volume use case (`volume.md`, `volume.csv`, `volume_windows.csv`)
 - `.github/workflows/`: Pylint and tests on every push, plus manually started workflows that run the whole notebook ("Notebook full run", with or without retraining), the hyperparameter search, the seed and layer study and the walk-forward evaluation on GitHub Actions
 - `patterndecoder_evaluation_study.ipynb`: Main Jupyter notebook for model evaluation and analysis
 
