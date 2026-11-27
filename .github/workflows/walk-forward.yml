@@ -1,16 +1,17 @@
 name: Walk-forward evaluation
 
 # Trains all models for several seeds and several test windows and compares
-# their forecasts with the zero and median forecasts (patterndecoder/robustness.py).
-# Started by hand only. The ticker (a Yahoo Finance ticker or a synthetic series)
-# and single config values can be changed for robustness checks; all other
-# settings come from config/config.yaml.
+# their forecasts with the benchmarks (patterndecoder/robustness.py); for the
+# panels DAX-PANEL and SYNTH-PANEL it runs the cross-section study instead
+# (patterndecoder/cross_section.py). Started by hand only. The ticker (a Yahoo
+# Finance ticker, a synthetic series or a panel) and single config values can
+# be changed for robustness checks; all other settings come from config/config.yaml.
 
 on:
   workflow_dispatch:
     inputs:
       ticker:
-        description: "Yahoo Finance ticker (^GDAXI: DAX, ^GSPC: S&P 500) or SYNTH-AR, SYNTH-MOTIF, SYNTH-CYCLE"
+        description: "Yahoo Finance ticker (^GDAXI: DAX, ^GSPC: S&P 500), SYNTH-AR, SYNTH-MOTIF, SYNTH-CYCLE, or a panel: DAX-PANEL, SYNTH-PANEL"
         required: true
         default: "^GDAXI"
       overrides:
@@ -47,7 +48,7 @@ jobs:
       - name: Cache key for the market data
         id: data-key
         run: |
-          key=$({ grep -E '^(data_path|ticker|type|start|end|interval):' config/config.yaml; cat patterndecoder/synthetic.py; } | sha256sum | cut -c1-16)
+          key=$({ grep -E '^(data_path|ticker|type|start|end|interval):' config/config.yaml; cat patterndecoder/synthetic.py patterndecoder/panel.py; } | sha256sum | cut -c1-16)
           echo "key=market-data-${key}" >> "$GITHUB_OUTPUT"
 
       - name: Restore market data
@@ -67,12 +68,12 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           pip install $(grep -E '^(numpy|pandas|pyyaml|yfinance)==' requirements.txt)
-          python -m patterndecoder.data
+          if [[ "$TICKER" == *-PANEL ]]; then python -m patterndecoder.panel; else python -m patterndecoder.data; fi
 
   run:
     needs: data
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 300
     strategy:
       fail-fast: false
       matrix:
@@ -109,7 +110,9 @@ jobs:
       - name: Train all models for one seed and one test window
         run: |
           mkdir -p wf-out
-          python -m patterndecoder.robustness run --seed ${{ matrix.seed }} \
+          module=patterndecoder.robustness
+          if [[ "$TICKER" == *-PANEL ]]; then module=patterndecoder.cross_section; fi
+          python -m "$module" run --seed ${{ matrix.seed }} \
             --test-start ${{ matrix.start }} --out wf-out/s${{ matrix.seed }}_w${{ matrix.start }}.csv
 
       - name: Upload forecasts
@@ -151,7 +154,9 @@ jobs:
       - name: Summarize
         run: |
           echo "### ${TICKER}, overrides ${OVERRIDES}" >> "$GITHUB_STEP_SUMMARY"
-          python -m patterndecoder.robustness summarize wf-results/*.csv --out wf-summary.csv
+          module=patterndecoder.robustness
+          if [[ "$TICKER" == *-PANEL ]]; then module=patterndecoder.cross_section; fi
+          python -m "$module" summarize wf-results/*.csv --out wf-summary.csv
           echo "--- pooled"; cat wf-summary.csv
           echo "--- windows"; cat wf-summary_windows.csv
 
