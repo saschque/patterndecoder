@@ -46,6 +46,7 @@ import yaml
 from prettytable import PrettyTable
 from statsmodels.tsa.arima.model import ARIMAResultsWrapper
 from patterndecoder.training import set_seed, split_train_validation
+from patterndecoder.revin import RevIN
 
 
 def string_to_object(path):
@@ -91,6 +92,8 @@ def load_model(params, path="models/example.yaml"):
         attn_spec = (string_to_object(model_params["attention"]), attn_kwargs)
         set_seed(params)
         model = string_to_object(model_params["architecture"])(params, attn_spec, name)
+        if params.get("revin", False):
+            model = RevIN(model, params.get("input_scale", 1))
     return model
 
 
@@ -116,7 +119,7 @@ HISTORY_PARAMS = [
     "loss", "metrics", "epochs", "early_stopping", "patience", "validation_split",
     "seed", "dropout", "l1_reg", "l2_reg", "d_model", "n_heads", "units",
     "n_layers_enc", "n_layers_dec", "input_scale", "target_scale", "readout", "series",
-    "calendar", "expiry_features",
+    "calendar", "expiry_features", "revin",
 ]
 
 

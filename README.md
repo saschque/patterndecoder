@@ -162,6 +162,7 @@ Three further experiments use the same evaluation. On synthetic series with a kn
   - `synthetic.py`: Synthetic return series with known patterns and oracle forecasts, used as positive controls
   - `volatility.py`: Volatility forecasting as a second use case: Parkinson volatility, persistence, EWMA and HAR benchmarks
   - `volume.py`: Trading volume as a third use case: centred log volume and a HAR model with calendar dummies (HAR-X)
+  - `revin.py`: Reversible instance normalization of each window's series input (`revin: true`)
   - `experiments.py`: Helpers shared by the tuning, study and walk-forward scripts
   - `evaluation.py`: Median baseline, Diebold-Mariano test and forecast diagnostics
 - `tests/`: Smoke tests for the models, the training pipeline, the evaluation and the walk-forward evaluation (`python -m pytest tests`)
