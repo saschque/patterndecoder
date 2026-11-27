@@ -11,7 +11,8 @@ model and of the benchmarks: for returns the zero forecast (random walk for
 the price) and the median of the training returns (the best constant forecast
 under MAE), plus the oracle for synthetic series; for volatility
 (``series: parkinson``) persistence, EWMA, HAR and the training median
-(patterndecoder/volatility.py).
+(patterndecoder/volatility.py); for trading volume (``series: log_volume``)
+the same and HAR-X, a HAR model with calendar dummies (patterndecoder/volume.py).
 
 ``summarize`` averages each model's forecasts over the seeds (an ensemble that
 removes most of the seed noise) and reports, per window and pooled over all
@@ -46,13 +47,20 @@ from patterndecoder.study import load_returns, model_files
 from patterndecoder.training import split_train_validation
 from patterndecoder.utils import compile_and_train, get_model_performance, load_config
 from patterndecoder.volatility import volatility_benchmarks
+from patterndecoder.volume import volume_benchmarks
 
 FIELDS = ["model", "seed", "test_start", "date", "actual", "prediction", "val_mae"]
-# The two benchmarks the models are tested against: for returns, for volatility
-TESTED_PAIRS = (("Naive", "Median"), ("HAR", "Persistence"))
+# The two benchmarks the models are tested against: for returns, for volume, for volatility
+TESTED_PAIRS = (("Naive", "Median"), ("HARX", "HAR"), ("HAR", "Persistence"))
 # Rows that are not models; Oracle exists only for synthetic series
-BENCHMARKS = ("Naive", "Median", "Oracle", "HAR", "Persistence", "EWMA")
-LABELS = {"Naive": "zero", "Median": "median", "HAR": "HAR", "Persistence": "persistence"}
+BENCHMARKS = ("Naive", "Median", "Oracle", "HAR", "HARX", "Persistence", "EWMA")
+LABELS = {
+    "Naive": "zero",
+    "Median": "median",
+    "HAR": "HAR",
+    "HARX": "HAR-X",
+    "Persistence": "persistence",
+}
 
 
 def row_position(count, share):
@@ -84,8 +92,11 @@ def benchmark_forecasts(train_data, test_data, params, oracle=None):
     Test and validation forecasts of the benchmarks, with the validation and
     test targets. ``oracle`` (pd.Series by date) exists for synthetic series only.
     """
-    if params.get("series", "log_return") == "parkinson":
+    series = params.get("series", "log_return")
+    if series == "parkinson":
         return volatility_benchmarks(train_data, test_data, params)
+    if series == "log_volume":
+        return volume_benchmarks(train_data, test_data, params)
     target, window = params["target_column"], params["window_size"]
     fit_data, val_data = split_train_validation(train_data, params)
     val_targets = val_data[target].iloc[window:]

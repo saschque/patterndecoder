@@ -31,6 +31,7 @@ from patterndecoder.experiments import (
 )
 from patterndecoder.data import get_stock_data
 from patterndecoder.volatility import parkinson_volatility
+from patterndecoder.volume import log_volume
 from patterndecoder.utils import (
     compile_and_train,
     get_model_performance,
@@ -59,12 +60,17 @@ def model_files():
 def load_returns(params):
     """
     The daily series to forecast: log returns of the configured price columns,
-    as in the notebook, or with ``series: parkinson`` the daily Parkinson
-    volatility (patterndecoder/volatility.py). The column keeps its configured name.
+    as in the notebook; with ``series: parkinson`` the daily Parkinson
+    volatility (patterndecoder/volatility.py); with ``series: log_volume`` the
+    centred log trading volume (patterndecoder/volume.py). The column keeps its
+    configured name.
     """
     prices = get_stock_data(params, False)
-    if params.get("series", "log_return") == "parkinson":
+    series = params.get("series", "log_return")
+    if series == "parkinson":
         return parkinson_volatility(prices).to_frame(params["columns"][0])
+    if series == "log_volume":
+        return log_volume(prices).to_frame(params["columns"][0])
     close = prices[params["columns"]]
     return np.log(close / close.shift(1)).fillna(0)
 

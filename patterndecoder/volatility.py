@@ -45,35 +45,46 @@ def har_regressors(series):
     )
 
 
-def fit_har(series, first_target):
+def har_design(series, dates, extra=None):
     """
-    HAR coefficients (constant first) from a least-absolute-deviations fit of
-    each day's value on the previous day's regressors, using all days before
-    the date ``first_target``.
+    The regressors for forecasting the values on ``dates``: the HAR regressors
+    of the previous day and, if given, ``extra(dates)`` (a DataFrame by date).
     """
-    # statsmodels is imported here because only this use case needs it
+    design = har_regressors(series).shift(1).loc[dates]
+    if extra is not None:
+        design = pd.concat([design, extra(dates)], axis=1)
+    return design
+
+
+def fit_har(series, first_target, extra=None):
+    """
+    Coefficients (constant first) from a least-absolute-deviations fit of each
+    day's value on its regressors (see har_design), using all days before the
+    date ``first_target``.
+    """
+    # statsmodels is imported here because only these use cases need it
     # pylint: disable-next=import-outside-toplevel
     from statsmodels.regression.quantile_regression import QuantReg
 
-    frame = pd.concat([series.rename("target"), har_regressors(series).shift(1)], axis=1)
-    frame = frame[frame.index < first_target].dropna()
-    design = np.column_stack([np.ones(len(frame)), frame.drop(columns="target").to_numpy()])
-    return QuantReg(frame["target"].to_numpy(), design).fit(q=0.5).params
+    design = har_design(series, series.index[series.index < first_target], extra).dropna()
+    regressors = np.column_stack([np.ones(len(design)), design.to_numpy()])
+    return QuantReg(series[design.index].to_numpy(), regressors).fit(q=0.5).params
 
 
-def har_forecasts(series, coefficients, dates):
-    """HAR forecasts for ``dates``, each from the regressors of the previous day."""
-    regressors = har_regressors(series).shift(1).loc[dates].to_numpy()
-    return pd.Series(coefficients[0] + regressors @ coefficients[1:], index=dates)
+def har_forecasts(series, coefficients, dates, extra=None):
+    """Forecasts for ``dates`` from the regressors of har_design."""
+    design = har_design(series, dates, extra).to_numpy()
+    return pd.Series(coefficients[0] + design @ coefficients[1:], index=dates)
 
 
-def volatility_benchmarks(train_data, test_data, params):
+def level_benchmarks(train_data, test_data, params, extra=None):
     """
-    Test and validation forecasts of the volatility benchmarks, with the
-    validation and test targets, in the form of robustness.benchmark_forecasts.
-    The HAR model and the median are fitted on the data before the validation
-    set (for the validation forecasts) or before the test window (for the test
-    forecasts).
+    Test and validation forecasts of persistence, EWMA, HAR and the training
+    median, and of HAR-X (HAR plus the regressors ``extra(dates)``) if ``extra``
+    is given, with the validation and test targets, in the form of
+    robustness.benchmark_forecasts. The HAR models and the median are fitted on
+    the data before the validation set (for the validation forecasts) or before
+    the test window (for the test forecasts).
     """
     target, window = params["target_column"], params["window_size"]
     series = pd.concat([train_data[target], test_data[target].iloc[window:]])
@@ -82,16 +93,27 @@ def volatility_benchmarks(train_data, test_data, params):
     actuals = test_data[target].iloc[window:]
     previous = series.shift(1)
     ewma = series.ewm(alpha=1 - EWMA_DECAY, adjust=False).mean().shift(1)
+
+    def har(regressors):
+        return tuple(
+            har_forecasts(series, fit_har(series, dates[0], regressors), dates, regressors)
+            for dates in (actuals.index, val_targets.index)
+        )
+
     forecasts = {
         "Persistence": (previous[actuals.index], previous[val_targets.index]),
         "EWMA": (ewma[actuals.index], ewma[val_targets.index]),
-        "HAR": tuple(
-            har_forecasts(series, fit_har(series, dates[0]), dates)
-            for dates in (actuals.index, val_targets.index)
-        ),
+        "HAR": har(None),
         "Median": (
             pd.Series(float(train_data[target].median()), index=actuals.index),
             pd.Series(float(fit_data[target].median()), index=val_targets.index),
         ),
     }
+    if extra is not None:
+        forecasts["HARX"] = har(extra)
     return forecasts, val_targets, actuals
+
+
+def volatility_benchmarks(train_data, test_data, params):
+    """The volatility benchmarks: persistence, EWMA, HAR and the training median."""
+    return level_benchmarks(train_data, test_data, params)
