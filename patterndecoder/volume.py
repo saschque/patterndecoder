@@ -55,6 +55,8 @@ def calendar_dummies(dates):
     third Friday of a month and for the third Friday of March, June, September
     and December, indexed by ``dates``.
     """
+    # pylint cannot see the date attributes of a DatetimeIndex
+    # pylint: disable=no-member
     dates = pd.DatetimeIndex(dates)
     third_friday = (dates.dayofweek == 4) & (dates.day >= 15) & (dates.day <= 21)
     columns = {

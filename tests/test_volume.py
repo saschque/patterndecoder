@@ -7,8 +7,7 @@ Run from the repository root with: python -m pytest tests
 import numpy as np
 import pandas as pd
 
-from patterndecoder import study, volume
-from patterndecoder.robustness import benchmark_forecasts, split_window, tested_pair
+from patterndecoder import robustness, study, volume
 from patterndecoder.utils import load_config
 from patterndecoder.volatility import fit_har
 
@@ -59,11 +58,11 @@ def test_harx_learns_the_calendar_effects():
     np.testing.assert_allclose(coefficients[[4, 8]], [-0.2, 0.5], atol=0.05)
     params = load_config("config/config.yaml")
     params["series"] = "log_volume"
-    forecasts, _, actuals = benchmark_forecasts(
-        *split_window(series.to_frame("Close"), params, 0.7), params
+    forecasts, _, actuals = robustness.benchmark_forecasts(
+        *robustness.split_window(series.to_frame("Close"), params, 0.7), params
     )
     assert set(forecasts) == {"HARX", "HAR", "Persistence", "EWMA", "Median"}
-    assert tested_pair(forecasts) == ("HARX", "HAR")
+    assert robustness.tested_pair(forecasts) == ("HARX", "HAR")
     mae = {name: float(np.mean(np.abs(pair[0] - actuals))) for name, pair in forecasts.items()}
     assert mae["HARX"] < mae["HAR"] < mae["Median"]
 
