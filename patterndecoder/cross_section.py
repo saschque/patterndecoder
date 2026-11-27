@@ -53,6 +53,20 @@ panel:
   the synthetic panel (``ticker: SYNTH-PANEL``), whose excess returns reverse
   by 10 % of the previous day's; it shows whether the pipeline and the models
   find a cross-sectional signal of known size.
+- Small caps (``ticker: SDAX-PANEL``), designed after the DAX run and before
+  any run on these stocks: the same study for the 71 companies of the SDAX
+  table of the English Wikipedia, stated as of the index review of 10
+  September 2020 (patterndecoder/panel.py), a universe fixed long before the
+  test windows. Smaller stocks trade less and react more slowly, so
+  short-term patterns such as reversal should be stronger there; trading them
+  also costs more, so the summary also reports the break-even cost per unit
+  of turnover. Yahoo Finance has no prices for eight of the companies
+  (Encavis, Hornbach Baumarkt, Klöckner & Co, Leoni, New Work, Steinhoff, Tele
+  Columbus, zooplus), most of which have been taken over or delisted since,
+  so the panel has 63 stocks. This survivorship can favour a reversal rule,
+  because stocks that fell and recovered stay in the panel while some that
+  kept falling are missing. Everything else, including the ten seeds and the
+  PatternDecoder comparison, is as for the DAX.
 - Changes after the positive control, before the DAX run: Linear was first a
   linear model trained like the neural models. In the positive control its
   training failed (37 % of the oracle's IC and a higher MAE than the zero
@@ -239,7 +253,11 @@ def ic_test(ics, reference=None):
 
 
 def portfolio(frame):
-    """Annualized mean returns before and after costs, Sharpe ratio after costs and turnover."""
+    """
+    Annualized mean returns before and after costs, Sharpe ratio after costs,
+    daily turnover, and the cost per unit of turnover that uses up the gross
+    return (break-even, in basis points).
+    """
     returns = long_short(frame, SHARE, COST)
     net = returns["net"]
     return {
@@ -247,6 +265,9 @@ def portfolio(frame):
         "long_short_net_%": round(100 * TRADING_DAYS * net.mean(), 2),
         "sharpe_net": round(float(net.mean() / net.std() * np.sqrt(TRADING_DAYS)), 2),
         "turnover": round(float(returns["turnover"].mean()), 3),
+        "break_even_bp": round(
+            float(1e4 * returns["gross"].mean() / returns["turnover"].mean()), 2
+        ),
     }
 
 

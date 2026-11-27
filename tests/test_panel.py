@@ -18,9 +18,11 @@ PARAMS = {
 }
 
 
-def test_universe_has_40_distinct_tickers():
-    """The universe lists the 40 DAX members of 20 March 2023 once each."""
+def test_universes_have_distinct_tickers():
+    """The universes list the 40 DAX and the 71 SDAX companies once each, without overlap."""
     assert len(panel.UNIVERSE) == len(set(panel.UNIVERSE)) == 40
+    assert len(panel.SDAX_UNIVERSE) == len(set(panel.SDAX_UNIVERSE)) == 71
+    assert not set(panel.UNIVERSE) & set(panel.SDAX_UNIVERSE)
 
 
 def test_synthetic_panel_has_a_known_reversal():

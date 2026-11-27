@@ -40,17 +40,18 @@ UNIVERSE = (
     "SRT3.DE", "SIE.DE", "ENR.DE", "SHL.DE", "SY1.DE", "VOW3.DE", "VNA.DE", "ZAL.DE",
 )
 SDAX_PANEL = "SDAX-PANEL"
+# Renamed companies under their current ticker: DIC Asset (BRNK), S&T (KTN),
+# Schaeffler (SHA0) and Shop Apotheke Europe (RDC)
 SDAX_UNIVERSE = (
     "1U1.DE", "ADJ.DE", "ADV.DE", "AAD.DE", "AOF.DE", "BYW6.DE", "BFSA.DE", "BDT.DE",
     "GBF.DE", "BVB.DE", "CEC.DE", "CWC.DE", "CCAP.DE", "DMP.DE", "DBAN.DE", "DEQ.DE",
-    "PBB.DE", "DEZ.DE", "DIC.DE", "BRNK.DE", "GIL.DE", "HNL.DE", "DRW3.DE", "DWS.DE",
-    "EUZ.DE", "ECV.DE", "FIE.DE", "HABA.DE", "HHFA.DE", "HBM.DE", "HBH.DE", "HYQ.DE",
-    "INH.DE", "INS.DE", "JEN.DE", "JST.DE", "JUN3.DE", "KCO.DE", "SKB.DE", "KRN.DE",
-    "KWS.DE", "LEO.DE", "LPK.DE", "NA9.DE", "NWO.DE", "NDX1.DE", "NOEJ.DE", "PAT.DE",
-    "PFV.DE", "SANT.DE", "KTN.DE", "SFQ.DE", "SZG.DE", "SHA.DE", "SHA0.DE", "SAE.DE",
-    "RDC.DE", "SIX2.DE", "S92.DE", "SHF.DE", "STM.DE", "SNH.DE", "SBS.DE", "SZU.DE",
-    "TTK.DE", "TLX.DE", "TC1.DE", "8TRA.DE", "VOS.DE", "WCH.DE", "WAC.DE", "WSU.DE",
-    "WUW.DE", "TIMA.DE", "ZO1.DE",
+    "PBB.DE", "DEZ.DE", "BRNK.DE", "GIL.DE", "HNL.DE", "DRW3.DE", "DWS.DE", "EUZ.DE",
+    "ECV.DE", "FIE.DE", "HABA.DE", "HHFA.DE", "HBM.DE", "HBH.DE", "HYQ.DE", "INH.DE",
+    "INS.DE", "JEN.DE", "JST.DE", "JUN3.DE", "KCO.DE", "SKB.DE", "KRN.DE", "KWS.DE",
+    "LEO.DE", "LPK.DE", "NA9.DE", "NWO.DE", "NDX1.DE", "NOEJ.DE", "PAT.DE", "PFV.DE",
+    "KTN.DE", "SFQ.DE", "SZG.DE", "SHA0.DE", "RDC.DE", "SIX2.DE", "S92.DE", "SHF.DE",
+    "STM.DE", "SNH.DE", "SBS.DE", "SZU.DE", "TTK.DE", "TLX.DE", "TC1.DE", "8TRA.DE",
+    "VOS.DE", "WCH.DE", "WAC.DE", "WSU.DE", "WUW.DE", "TIMA.DE", "ZO1.DE",
 )
 PANELS = {DAX_PANEL: UNIVERSE, SDAX_PANEL: SDAX_UNIVERSE}
 COLUMNS = ["Close", "High", "Low", "Volume"]

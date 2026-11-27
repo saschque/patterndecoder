@@ -48,6 +48,6 @@ def test_run_and_summarize_on_the_synthetic_panel(tmp_path, monkeypatch):
     assert pooled.loc["Oracle", "ic"] > 0.05
     assert abs(pooled.loc["Reversal", "ic"] - pooled.loc["Oracle", "ic"]) < 1e-3
     assert np.isnan(pooled.loc["Naive", "ic"])
-    assert pooled.loc["Oracle", "long_short_gross_%"] > 0
+    assert pooled.loc["Oracle", "long_short_gross_%"] > 0 < pooled.loc["Oracle", "break_even_bp"]
     windows = pd.read_csv(tmp_path / "summary_windows.csv")
     assert set(windows["model"]) == set(pooled.index) and (windows["days"] == 26).all()
