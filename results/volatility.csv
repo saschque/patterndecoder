@@ -101,3 +101,37 @@ S&P 500,^GSPC,"input_scale 100, last-step readout (setup chosen on DAX returns)"
 S&P 500,^GSPC,"input_scale 100, last-step readout (setup chosen on DAX returns)",Transformer,628,0.0025894,0.0027087,26.909,0.0,6.717,0.3234,0.0024353
 S&P 500,^GSPC,"input_scale 100, last-step readout (setup chosen on DAX returns)",Transformer_Logsparse,628,0.0026267,0.0027564,28.739,0.0,8.257,0.2353,0.0024616
 S&P 500,^GSPC,"input_scale 100, last-step readout (setup chosen on DAX returns)",Median,628,0.0027318,0.0027318,33.892,0.0,12.59,0.0805,0.0027162
+DAX,^GDAXI,"input_scale 100, last-step readout, RevIN",HAR,638,0.0019242,0.0019242,0.0,nan,-22.214,0.0,0.0019349
+DAX,^GDAXI,"input_scale 100, last-step readout, RevIN",PatternDecoder_Autocorr,638,0.0019331,0.0019502,0.463,0.8153,-21.854,0.0,0.0019758
+DAX,^GDAXI,"input_scale 100, last-step readout, RevIN",Transformer_Conv,638,0.0019368,0.0019665,0.655,0.7201,-21.705,0.0,0.0019769
+DAX,^GDAXI,"input_scale 100, last-step readout, RevIN",Autoformer,638,0.0019413,0.0019561,0.887,0.658,-21.525,0.0,0.0019845
+DAX,^GDAXI,"input_scale 100, last-step readout, RevIN",PatternDecoder_Conv,638,0.0019415,0.0019607,0.899,0.6158,-21.515,0.0,0.0019774
+DAX,^GDAXI,"input_scale 100, last-step readout, RevIN",DecoderOnlyTransformer_Conv,638,0.0019433,0.0019637,0.994,0.5765,-21.441,0.0,0.001979
+DAX,^GDAXI,"input_scale 100, last-step readout, RevIN",Transformer_Logsparse,638,0.001955,0.0019839,1.599,0.337,-20.97,0.0,0.0019979
+DAX,^GDAXI,"input_scale 100, last-step readout, RevIN",PatternDecoder,638,0.001957,0.0019727,1.702,0.388,-20.89,0.0,0.0019924
+DAX,^GDAXI,"input_scale 100, last-step readout, RevIN",PatternDecoderNoLstmBlock,638,0.0019574,0.0019711,1.726,0.3534,-20.872,0.0,0.0019958
+DAX,^GDAXI,"input_scale 100, last-step readout, RevIN",Transformer,638,0.0019601,0.0019809,1.866,0.3089,-20.763,0.0,0.0020064
+DAX,^GDAXI,"input_scale 100, last-step readout, RevIN",DecoderOnlyTransformer,638,0.0019603,0.0019759,1.878,0.3335,-20.753,0.0,0.0019975
+DAX,^GDAXI,"input_scale 100, last-step readout, RevIN",PatternDecoderBlockNoCrossAttention,638,0.0019648,0.0019996,2.109,0.1916,-20.574,0.0,0.0020171
+DAX,^GDAXI,"input_scale 100, last-step readout, RevIN",Informer,638,0.0019756,0.0020102,2.674,0.1645,-20.135,0.0,0.0020346
+DAX,^GDAXI,"input_scale 100, last-step readout, RevIN",PatternDecoderNoConvBlock,638,0.0019813,0.0019934,2.967,0.1218,-19.906,0.0,0.0020042
+DAX,^GDAXI,"input_scale 100, last-step readout, RevIN",EWMA,638,0.0021332,0.0021332,10.863,0.001,-13.764,0.0004,0.0021369
+DAX,^GDAXI,"input_scale 100, last-step readout, RevIN",Median,638,0.0022883,0.0022883,18.921,0.0002,-7.496,0.103,0.0023295
+DAX,^GDAXI,"input_scale 100, last-step readout, RevIN",Persistence,638,0.0024737,0.0024737,28.558,0.0,0.0,nan,0.0024606
+S&P 500,^GSPC,"input_scale 100, last-step readout, RevIN",HAR,628,0.0020403,0.0020403,0.0,nan,-15.91,0.0,0.0019578
+S&P 500,^GSPC,"input_scale 100, last-step readout, RevIN",Transformer,628,0.0021183,0.0021533,3.822,0.0816,-12.696,0.0007,0.0019977
+S&P 500,^GSPC,"input_scale 100, last-step readout, RevIN",PatternDecoderNoLstmBlock,628,0.0021192,0.0021374,3.867,0.0817,-12.658,0.0007,0.0019903
+S&P 500,^GSPC,"input_scale 100, last-step readout, RevIN",Transformer_Logsparse,628,0.0021205,0.0021597,3.931,0.0436,-12.604,0.0016,0.0019957
+S&P 500,^GSPC,"input_scale 100, last-step readout, RevIN",PatternDecoder_Conv,628,0.0021223,0.0021406,4.02,0.0186,-12.53,0.0008,0.0019924
+S&P 500,^GSPC,"input_scale 100, last-step readout, RevIN",PatternDecoder,628,0.0021225,0.0021433,4.027,0.0747,-12.524,0.0009,0.0019942
+S&P 500,^GSPC,"input_scale 100, last-step readout, RevIN",DecoderOnlyTransformer,628,0.0021251,0.0021502,4.155,0.0718,-12.416,0.0012,0.001997
+S&P 500,^GSPC,"input_scale 100, last-step readout, RevIN",Transformer_Conv,628,0.0021259,0.0021488,4.192,0.0295,-12.386,0.0015,0.0019863
+S&P 500,^GSPC,"input_scale 100, last-step readout, RevIN",DecoderOnlyTransformer_Conv,628,0.0021273,0.0021452,4.264,0.0174,-12.325,0.0012,0.001994
+S&P 500,^GSPC,"input_scale 100, last-step readout, RevIN",PatternDecoder_Autocorr,628,0.0021452,0.0021601,5.139,0.0061,-11.588,0.003,0.0020148
+S&P 500,^GSPC,"input_scale 100, last-step readout, RevIN",Autoformer,628,0.0021519,0.0021617,5.466,0.0057,-11.314,0.0045,0.0020216
+S&P 500,^GSPC,"input_scale 100, last-step readout, RevIN",PatternDecoderBlockNoCrossAttention,628,0.0021583,0.0021962,5.784,0.0043,-11.047,0.008,0.0020259
+S&P 500,^GSPC,"input_scale 100, last-step readout, RevIN",PatternDecoderNoConvBlock,628,0.0021588,0.0021754,5.809,0.0304,-11.026,0.0053,0.0020259
+S&P 500,^GSPC,"input_scale 100, last-step readout, RevIN",Informer,628,0.0021754,0.0022164,6.619,0.0095,-10.345,0.0088,0.0020517
+S&P 500,^GSPC,"input_scale 100, last-step readout, RevIN",EWMA,628,0.0023876,0.0023876,17.018,0.0,-1.599,0.7587,0.0022029
+S&P 500,^GSPC,"input_scale 100, last-step readout, RevIN",Persistence,628,0.0024264,0.0024264,18.92,0.0,0.0,nan,0.0024149
+S&P 500,^GSPC,"input_scale 100, last-step readout, RevIN",Median,628,0.0027318,0.0027318,33.892,0.0,12.59,0.0805,0.0027162

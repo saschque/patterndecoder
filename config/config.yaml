@@ -9,7 +9,7 @@ target_scale: 1  # the output layer learns the targets times this factor; predic
 readout: last  # summary of the time steps before the output layer: mean (all steps) or last (chosen on validation)
 calendar: current  # calendar features of each input day (current) or of the next trading day (next)
 expiry_features: false  # add dummies for the third Friday and the quarterly expiry to the calendar features
-revin: false  # reversible instance normalization of each window's series input (patterndecoder/revin.py)
+revin: false  # reversible instance normalization of each window's series input (patterndecoder/revin.py); chosen for volume and volatility (results/revin.md)
 shuffle_buffer: 1000
 #training_params:
 # loss, learning_rate, dropout, d_model and units were chosen by the validation

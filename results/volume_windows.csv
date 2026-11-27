@@ -539,3 +539,183 @@ S&P 500,^GSPC,calendar of the target day with expiry dummies,0.9,2025-08-07,2026
 S&P 500,^GSPC,calendar of the target day with expiry dummies,0.9,2025-08-07,2026-02-05,PatternDecoder_Autocorr,0.2452133,139.506,0.245691,12
 S&P 500,^GSPC,calendar of the target day with expiry dummies,0.9,2025-08-07,2026-02-05,Informer,0.2452775,139.568,0.245664,13
 S&P 500,^GSPC,calendar of the target day with expiry dummies,0.9,2025-08-07,2026-02-05,Median,0.2535599,147.658,0.2535599,
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,HARX,0.1680551,0.0,0.1680551,
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,PatternDecoder_Conv,0.1890605,12.499,0.1910724,1
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,DecoderOnlyTransformer_Conv,0.189083,12.513,0.1912808,2
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,HAR,0.1897852,12.93,0.1897852,
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,Transformer_Conv,0.1898379,12.962,0.1922982,3
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,PatternDecoderNoConvBlock,0.1899264,13.014,0.1915635,4
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,PatternDecoderBlockNoCrossAttention,0.1908634,13.572,0.1935508,5
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,Transformer_Logsparse,0.1908915,13.589,0.1927205,6
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,PatternDecoder,0.1909233,13.608,0.1921369,7
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,PatternDecoderNoLstmBlock,0.1913018,13.833,0.1924577,8
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,Transformer,0.1914748,13.936,0.1925841,9
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,DecoderOnlyTransformer,0.1920306,14.266,0.1935188,10
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,Informer,0.1925597,14.581,0.195656,11
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,Autoformer,0.1963189,16.818,0.1971236,12
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,PatternDecoder_Autocorr,0.1970501,17.253,0.1978935,13
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,Median,0.1989689,18.395,0.1989689,
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,EWMA,0.1993412,18.617,0.1993412,
+DAX,^GDAXI,"calendar of past days, RevIN",0.5,2023-08-02,2024-01-31,Persistence,0.217732,29.56,0.217732,
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,HARX,0.1910249,0.0,0.1910249,
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,PatternDecoderNoConvBlock,0.1983401,3.829,0.2037937,1
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,PatternDecoderNoLstmBlock,0.1988468,4.095,0.2033037,2
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,Transformer,0.1989359,4.141,0.205115,3
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,PatternDecoder,0.1999437,4.669,0.2051435,4
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,DecoderOnlyTransformer,0.2002766,4.843,0.2070571,5
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,Transformer_Logsparse,0.2004409,4.929,0.2074558,6
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,PatternDecoder_Conv,0.2006744,5.051,0.2058455,7
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,DecoderOnlyTransformer_Conv,0.2012029,5.328,0.2084843,8
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,Transformer_Conv,0.2012716,5.364,0.2076413,9
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,PatternDecoderBlockNoCrossAttention,0.2025156,6.015,0.2081581,10
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,Autoformer,0.2086652,9.235,0.2097427,11
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,PatternDecoder_Autocorr,0.2090213,9.421,0.2104976,12
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,Informer,0.2100007,9.934,0.2164537,13
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,EWMA,0.2252703,17.927,0.2252703,
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,HAR,0.2286952,19.72,0.2286952,
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,Median,0.2336592,22.319,0.2336592,
+DAX,^GDAXI,"calendar of past days, RevIN",0.6,2024-02-01,2024-07-31,Persistence,0.2808874,47.042,0.2808874,
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,HARX,0.1742503,0.0,0.1742503,
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,HAR,0.194205,11.452,0.194205,
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,Transformer,0.1969016,12.999,0.1991517,1
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,PatternDecoder_Conv,0.1972958,13.225,0.1990723,2
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,PatternDecoderBlockNoCrossAttention,0.1980476,13.657,0.201274,3
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,PatternDecoderNoLstmBlock,0.1993572,14.409,0.2012369,4
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,DecoderOnlyTransformer_Conv,0.199775,14.648,0.2010537,5
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,PatternDecoderNoConvBlock,0.2011179,15.419,0.202281,6
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,Transformer_Conv,0.201265,15.503,0.2031038,7
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,PatternDecoder,0.2013609,15.558,0.2035028,8
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,Transformer_Logsparse,0.2026995,16.327,0.2040853,9
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,Informer,0.2040575,17.106,0.2064744,10
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,DecoderOnlyTransformer,0.2042964,17.243,0.2056272,11
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,PatternDecoder_Autocorr,0.2078079,19.258,0.208223,12
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,Autoformer,0.208089,19.42,0.2085997,13
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,EWMA,0.217817,25.002,0.217817,
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,Persistence,0.2222935,27.571,0.2222935,
+DAX,^GDAXI,"calendar of past days, RevIN",0.7,2024-08-01,2025-02-03,Median,0.2400892,37.784,0.2400892,
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,HARX,0.1728209,0.0,0.1728209,
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,Transformer_Conv,0.1925019,11.388,0.1955592,1
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,DecoderOnlyTransformer_Conv,0.1933481,11.878,0.1959665,2
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,Transformer,0.1934718,11.949,0.1959796,3
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,PatternDecoderNoConvBlock,0.1948717,12.759,0.1959917,4
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,PatternDecoder_Conv,0.1951269,12.907,0.1972548,5
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,PatternDecoder,0.1961239,13.484,0.1976393,6
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,DecoderOnlyTransformer,0.1961484,13.498,0.1984173,7
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,HAR,0.1962243,13.542,0.1962243,
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,PatternDecoderNoLstmBlock,0.1973156,14.173,0.1984307,8
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,Transformer_Logsparse,0.1995031,15.439,0.2019865,9
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,Informer,0.2026369,17.253,0.2049145,10
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,PatternDecoderBlockNoCrossAttention,0.2037655,17.906,0.2061902,11
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,PatternDecoder_Autocorr,0.2098061,21.401,0.2103698,12
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,Autoformer,0.2124516,22.932,0.212818,13
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,Persistence,0.2161061,25.046,0.2161061,
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,EWMA,0.2280742,31.971,0.2280742,
+DAX,^GDAXI,"calendar of past days, RevIN",0.8,2025-02-04,2025-08-04,Median,0.2603199,50.63,0.2603199,
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,HARX,0.1568186,0.0,0.1568186,
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,PatternDecoderNoConvBlock,0.1631769,4.055,0.1644481,1
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,PatternDecoderBlockNoCrossAttention,0.1632211,4.083,0.1684038,2
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,Transformer_Logsparse,0.1655203,5.549,0.1687695,3
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,Transformer,0.1667673,6.344,0.1689358,4
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,Informer,0.1670421,6.519,0.1722871,5
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,DecoderOnlyTransformer_Conv,0.1672167,6.631,0.1692302,6
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,PatternDecoder_Autocorr,0.1674215,6.761,0.1682159,7
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,Autoformer,0.1674444,6.776,0.1680682,8
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,PatternDecoder_Conv,0.1678057,7.006,0.1696342,9
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,Transformer_Conv,0.1678515,7.035,0.1702819,10
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,PatternDecoderNoLstmBlock,0.1679358,7.089,0.1691749,11
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,DecoderOnlyTransformer,0.1684781,7.435,0.1702964,12
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,PatternDecoder,0.1684823,7.438,0.1700331,13
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,HAR,0.179618,14.539,0.179618,
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,EWMA,0.1801022,14.847,0.1801022,
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,Persistence,0.2056179,31.118,0.2056179,
+DAX,^GDAXI,"calendar of past days, RevIN",0.9,2025-08-05,2026-02-05,Median,0.2909275,85.518,0.2909275,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,HARX,0.0894361,0.0,0.0894361,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,DecoderOnlyTransformer,0.0937984,4.878,0.0971221,1
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,PatternDecoder,0.0938593,4.946,0.0967083,2
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,PatternDecoderNoConvBlock,0.0939344,5.03,0.0966782,3
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,PatternDecoderNoLstmBlock,0.0941499,5.271,0.096698,4
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,Transformer_Conv,0.0947949,5.992,0.0979368,5
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,DecoderOnlyTransformer_Conv,0.095034,6.259,0.0975978,6
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,Transformer,0.0950876,6.319,0.0972963,7
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,PatternDecoder_Conv,0.0951522,6.391,0.097144,8
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,PatternDecoderBlockNoCrossAttention,0.0971151,8.586,0.0997222,9
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,Transformer_Logsparse,0.0971292,8.602,0.1003203,10
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,Informer,0.0980153,9.593,0.1014399,11
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,HAR,0.0984452,10.073,0.0984452,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,PatternDecoder_Autocorr,0.1022749,14.355,0.102954,12
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,Autoformer,0.1026303,14.753,0.1032156,13
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,EWMA,0.1067758,19.388,0.1067758,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,Persistence,0.1092117,22.111,0.1092117,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.5,2023-08-07,2024-02-02,Median,0.1548556,73.147,0.1548556,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,HARX,0.0840293,0.0,0.0840293,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,PatternDecoderNoConvBlock,0.0891569,6.102,0.0906267,1
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,PatternDecoder_Conv,0.0928665,10.517,0.0943337,2
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,DecoderOnlyTransformer_Conv,0.0931707,10.879,0.0947118,3
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,DecoderOnlyTransformer,0.093281,11.01,0.0947017,4
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,PatternDecoder,0.0934559,11.218,0.0948344,5
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,Transformer_Conv,0.0935002,11.271,0.0952661,6
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,Informer,0.0935299,11.306,0.0955706,7
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,PatternDecoderNoLstmBlock,0.0935549,11.336,0.0950007,8
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,Transformer,0.0937579,11.578,0.0954552,9
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,Transformer_Logsparse,0.0941039,11.989,0.0960455,10
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,PatternDecoderBlockNoCrossAttention,0.0957824,13.987,0.0980692,11
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,Autoformer,0.0975937,16.142,0.0981695,12
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,HAR,0.097661,16.223,0.097661,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,PatternDecoder_Autocorr,0.097861,16.461,0.098456,13
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,EWMA,0.101785,21.13,0.101785,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,Persistence,0.1096198,30.454,0.1096198,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.6,2024-02-05,2024-08-05,Median,0.1222485,45.483,0.1222485,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,HARX,0.0948245,0.0,0.0948245,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,HAR,0.1018428,7.401,0.1018428,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,PatternDecoderNoConvBlock,0.1021104,7.684,0.104254,1
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,Transformer_Conv,0.1035404,9.192,0.1062211,2
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,PatternDecoderNoLstmBlock,0.1040247,9.702,0.1070409,3
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,DecoderOnlyTransformer_Conv,0.1041194,9.802,0.1069459,4
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,PatternDecoder_Conv,0.1042079,9.896,0.1067068,5
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,DecoderOnlyTransformer,0.1046208,10.331,0.1080268,6
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,PatternDecoder,0.1049933,10.724,0.1082234,7
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,Transformer,0.1056309,11.396,0.1092723,8
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,Transformer_Logsparse,0.105726,11.496,0.108807,9
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,PatternDecoderBlockNoCrossAttention,0.1067918,12.62,0.1113361,10
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,Informer,0.1121564,18.278,0.1152583,11
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,PatternDecoder_Autocorr,0.1123117,18.442,0.1129064,12
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,Autoformer,0.1133495,19.536,0.1139089,13
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,Persistence,0.1192993,25.811,0.1192993,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,EWMA,0.1246992,31.505,0.1246992,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.7,2024-08-06,2025-02-04,Median,0.1451032,53.023,0.1451032,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,PatternDecoderNoConvBlock,0.100202,-3.178,0.1012893,1
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,Transformer,0.1019868,-1.454,0.103384,2
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,PatternDecoder,0.102577,-0.883,0.1038984,3
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,PatternDecoderNoLstmBlock,0.10301,-0.465,0.1044096,4
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,DecoderOnlyTransformer,0.1030781,-0.399,0.1044479,5
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,Transformer_Conv,0.1033551,-0.132,0.1057139,6
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,HARX,0.1034912,0.0,0.1034912,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,PatternDecoder_Conv,0.1035715,0.078,0.1046764,7
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,DecoderOnlyTransformer_Conv,0.1041012,0.589,0.105552,8
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,Transformer_Logsparse,0.1046396,1.11,0.1068912,9
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,Informer,0.104937,1.397,0.1070719,10
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,PatternDecoder_Autocorr,0.1082793,4.627,0.1087405,11
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,PatternDecoderBlockNoCrossAttention,0.1086336,4.969,0.1111392,12
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,Autoformer,0.1086866,5.02,0.1092865,13
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,HAR,0.1108844,7.144,0.1108844,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,Persistence,0.1176678,13.698,0.1176678,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,EWMA,0.1180886,14.105,0.1180886,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.8,2025-02-05,2025-08-06,Median,0.2487397,140.349,0.2487397,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,PatternDecoderNoConvBlock,0.0936227,-8.557,0.0947472,1
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,PatternDecoder_Conv,0.0943409,-7.855,0.0956445,2
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,PatternDecoder,0.0956157,-6.61,0.0970369,3
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,Transformer_Conv,0.0956277,-6.598,0.0973619,4
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,PatternDecoderNoLstmBlock,0.0957817,-6.448,0.097027,5
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,DecoderOnlyTransformer_Conv,0.0959728,-6.261,0.0970457,6
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,Transformer_Logsparse,0.0973569,-4.909,0.0988357,7
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,Transformer,0.0977418,-4.533,0.099126,8
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,PatternDecoderBlockNoCrossAttention,0.0981882,-4.097,0.1011722,9
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,DecoderOnlyTransformer,0.0987022,-3.595,0.0998252,10
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,HARX,0.1023831,0.0,0.1023831,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,Informer,0.1028743,0.48,0.1055641,11
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,Autoformer,0.1056812,3.221,0.1062306,12
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,PatternDecoder_Autocorr,0.1060837,3.614,0.1065933,13
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,Persistence,0.1061949,3.723,0.1061949,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,HAR,0.1077827,5.274,0.1077827,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,EWMA,0.1244763,21.579,0.1244763,
+S&P 500,^GSPC,"calendar of past days, RevIN",0.9,2025-08-07,2026-02-05,Median,0.2535599,147.658,0.2535599,
