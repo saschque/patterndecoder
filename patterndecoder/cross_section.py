@@ -13,7 +13,8 @@ panel:
   a date before the first test window, so that the test has no survivorship
   bias. Stocks enter the panel when their prices start (Daimler Truck in
   December 2021, Porsche AG in September 2022) and stay in it after leaving
-  the DAX.
+  the DAX. Yahoo Finance has no data for Covestro, whose free float fell
+  below 10 % in December 2024, so the panel has 39 stocks.
 - Data: daily Xetra closing prices adjusted for dividends and splits, daily
   high and low and volume from Yahoo Finance for the date range of
   config/config.yaml (5 February 2021 to 5 February 2026).

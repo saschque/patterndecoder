@@ -61,8 +61,8 @@ def long_format(frames):
     return long.dropna(subset=["Close"]).reset_index()
 
 
-def download_panel(params, tickers=UNIVERSE):
-    """Daily prices (adjusted for dividends and splits), high, low and volume from Yahoo Finance."""
+def download_prices(params, tickers):
+    """One Yahoo Finance download of daily prices, adjusted for dividends and splits."""
     import yfinance as yf  # pylint: disable=import-outside-toplevel
 
     frame = yf.download(
@@ -73,15 +73,31 @@ def download_panel(params, tickers=UNIVERSE):
         auto_adjust=True,
         actions=False,
         progress=False,
-        threads=True,
+        threads=False,
     )
     if frame.empty:
-        raise RuntimeError("Yahoo Finance returned no data for the panel")
+        return pd.DataFrame(columns=["Date", "Ticker", *COLUMNS])
     index = pd.to_datetime(frame.index)
     if index.tz is not None:
         index = index.tz_localize(None)
     frame.index = index.normalize().rename("Date")
     return long_format({column: frame[column] for column in COLUMNS})
+
+
+def download_panel(params, tickers=UNIVERSE, attempts=3):
+    """
+    Daily prices, high, low and volume of the tickers from Yahoo Finance; tickers
+    without data are downloaded again, up to ``attempts`` times in all.
+    """
+    parts, missing = [], list(tickers)
+    for _ in range(attempts):
+        if missing:
+            parts.append(download_prices(params, missing))
+            missing = sorted(set(missing) - set(parts[-1]["Ticker"]))
+    panel = pd.concat(parts, ignore_index=True)
+    if panel.empty:
+        raise RuntimeError("Yahoo Finance returned no data for the panel")
+    return panel
 
 
 def synthetic_returns(rng, shape, reversal):

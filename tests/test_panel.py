@@ -64,6 +64,21 @@ def test_panel_windows_use_only_the_days_before_the_target():
         assert np.isclose(targets[sample], data["target"][row, stock])
 
 
+def test_download_panel_retries_missing_tickers(monkeypatch):
+    """Tickers that a download misses are requested again; lasting gaps are left out."""
+    calls = []
+
+    def fake_download(_, tickers):
+        calls.append(list(tickers))
+        found = [ticker for ticker in tickers if ticker == "A" or len(calls) > 1 and ticker == "B"]
+        return pd.DataFrame({"Date": pd.Timestamp("2024-01-02"), "Ticker": found, "Close": 1.0})
+
+    monkeypatch.setattr(panel, "download_prices", fake_download)
+    result = panel.download_panel({}, tickers=("A", "B", "C"))
+    assert sorted(result["Ticker"]) == ["A", "B"]
+    assert calls == [["A", "B", "C"], ["B", "C"], ["C"]]
+
+
 def test_split_rows():
     """Fit, validation and test days follow each other without overlap."""
     rows = panel.split_rows(1000, PARAMS, 0.5)
