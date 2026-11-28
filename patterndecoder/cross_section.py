@@ -67,6 +67,23 @@ panel:
   because stocks that fell and recovered stay in the panel while some that
   kept falling are missing. Everything else, including the ten seeds and the
   PatternDecoder comparison, is as for the DAX.
+- Confirmation on UK mid caps (``ticker: FTSE250-PANEL``), designed after the
+  SDAX run and before any run on these stocks. The hypothesis, from the SDAX
+  result: PatternDecoderNoConvBlock has a higher mean daily IC than the
+  comparison model, the other neural model with the highest mean validation
+  IC. It is the only confirmatory test: one-sided Newey-West test of the daily
+  IC differences at the 5 % level. Universe: the 250 constituents of the FTSE
+  250 table of the English Wikipedia after the index changes of 25 April 2023,
+  as archived in May 2023 (patterndecoder/panel.py), a list fixed before the
+  test windows and from a market independent of the German panels; it
+  includes investment trusts, because the table's sector labels do not
+  identify them reliably. To bound the computing time, only the models the
+  hypothesis needs are trained: PatternDecoderNoConvBlock, the seven other
+  neural models, and the PatternDecoder for a secondary comparison.
+  Everything else is as for the DAX and the SDAX: features, training,
+  benchmarks, ten seeds and five test windows. Secondary results: the IC of
+  each forecast, the PatternDecoder against the comparison model, and the
+  portfolio with its break-even cost.
 - Changes after the positive control, before the DAX run: Linear was first a
   linear model trained like the neural models. In the positive control its
   training failed (37 % of the oracle's IC and a higher MAE than the zero
@@ -91,6 +108,7 @@ from statsmodels.regression.quantile_regression import QuantReg
 from patterndecoder.evaluation import newey_west_test
 from patterndecoder.experiments import build_model, publish_summary, walk_forward_main
 from patterndecoder.panel import (
+    FTSE250_PANEL,
     daily_ic,
     load_panel,
     long_short,
@@ -107,6 +125,14 @@ FIELDS = [
 # Rows that are not neural models; Oracle exists only for the synthetic panel
 BENCHMARKS = ("Naive", "Reversal", "Linear", "Oracle")
 COMPARED = ("PatternDecoder", "PatternDecoderNoConvBlock")
+# Models trained for a confirmation panel: the compared models and all other neural models
+PANEL_MODELS = {
+    FTSE250_PANEL: (
+        "PatternDecoderNoConvBlock", "PatternDecoder", "Transformer", "Transformer_Conv",
+        "Transformer_Logsparse", "DecoderOnlyTransformer", "DecoderOnlyTransformer_Conv",
+        "Informer", "Autoformer",
+    ),
+}
 EPOCHS_PER_PASS = 4
 PASSES = 10
 PATIENCE_PASSES = 2
@@ -206,9 +232,15 @@ def forecast_rows(name, forecasts, sets, data, run_id):
     return pd.DataFrame(columns, columns=FIELDS)
 
 
+def panel_model_files(params):
+    """Model files to train: all, or for a confirmation panel the models its design names."""
+    names = PANEL_MODELS.get(params.get("ticker"))
+    return [path for path in model_files() if not names or load_config(path)["name"] in names]
+
+
 def trained_forecasts(params, sets, workdir):
-    """Yields the name and the forecasts of each model of models/*.yaml."""
-    for model_yaml in model_files():
+    """Yields the name and the forecasts of each model to train."""
+    for model_yaml in panel_model_files(params):
         model, config_path = build_model(params, model_yaml, workdir)
         yield load_config(model_yaml)["name"], train(model, sets, load_config(config_path))
 
@@ -333,9 +365,10 @@ def comparison_text(validation, ics):
     lines = [f"Comparison model (highest mean validation IC of the other models): {reference}"]
     for name in compared:
         test = ic_test(ics[name], ics[reference])
+        one_sided = test["p_value"] / 2 if test["mean"] > 0 else 1 - test["p_value"] / 2
         lines.append(
             f"- {name} minus {reference}: IC difference {test['mean']:+.4f}, "
-            f"p = {test['p_value']:.3f}"
+            f"p = {test['p_value']:.3f} (one-sided {one_sided:.3f})"
         )
     return "\n".join(lines)
 

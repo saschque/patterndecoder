@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from patterndecoder import cross_section, panel
+from patterndecoder.utils import load_config
 from tests.test_smoke import write_config
 
 
@@ -20,6 +21,16 @@ def test_lad_forecasts_recover_the_slope():
     for design, tolerance in designs:
         forecasts = cross_section.lad_forecasts((inputs, targets), (inputs[:5], None), design)
         np.testing.assert_allclose(forecasts, -0.2 * inputs[:5, -1, 0], atol=tolerance)
+
+
+def test_confirmation_panel_trains_the_models_of_its_design():
+    """The FTSE 250 panel trains only the models its hypothesis needs; other panels all."""
+    names = {
+        load_config(path)["name"]
+        for path in cross_section.panel_model_files({"ticker": panel.FTSE250_PANEL})
+    }
+    assert names == set(cross_section.PANEL_MODELS[panel.FTSE250_PANEL])
+    assert len(cross_section.panel_model_files({"ticker": panel.SDAX_PANEL})) == 13
 
 
 def test_run_and_summarize_on_the_synthetic_panel(tmp_path, monkeypatch):
