@@ -23,7 +23,7 @@ def test_universes_have_distinct_tickers():
     assert len(panel.UNIVERSE) == len(set(panel.UNIVERSE)) == 40
     assert len(panel.SDAX_UNIVERSE) == len(set(panel.SDAX_UNIVERSE)) == 71
     assert not set(panel.UNIVERSE) & set(panel.SDAX_UNIVERSE)
-    assert len(panel.FTSE250_UNIVERSE) == len(set(panel.FTSE250_UNIVERSE)) >= 250
+    assert len(panel.FTSE250_UNIVERSE) == len(set(panel.FTSE250_UNIVERSE)) == 250
 
 
 def test_synthetic_panel_has_a_known_reversal():

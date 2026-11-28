@@ -57,9 +57,9 @@ SDAX_UNIVERSE = (
     "VOS.DE", "WCH.DE", "WAC.DE", "WSU.DE", "WUW.DE", "TIMA.DE", "ZO1.DE",
 )
 FTSE250_PANEL = "FTSE250-PANEL"
-# QinetiQ, whose ticker the table leaves out, as QQ.L; candidate current tickers of
-# companies renamed since: Shaftesbury Capital (SHC), Redde Northgate (ZIG) and
-# National Express (MCG)
+# QinetiQ, whose ticker the table leaves out, as QQ.L; companies renamed since
+# under their current ticker: Shaftesbury Capital (SHC), Redde Northgate (ZIG)
+# and National Express (MCG)
 FTSE250_UNIVERSE = (
     "3IN.L", "FOUR.L", "ASL.L", "APEO.L", "ATST.L", "ATT.L", "APAX.L", "ASCL.L", "ASHM.L",
     "ASC.L", "AGR.L", "AML.L", "ATG.L", "AGT.L", "BAB.L", "BGFD.L", "BAKK.L", "BCPT.L", "BBY.L",
@@ -77,17 +77,16 @@ FTSE250_UNIVERSE = (
     "JLEN.L", "JAM.L", "JMG.L", "JEDT.L", "JGGI.L", "JII.L", "JFJ.L", "JTC.L", "JUP.L", "JUST.L",
     "KNOS.L", "KLR.L", "LRE.L", "LWDB.L", "LIO.L", "LMP.L", "LXI.L", "EMG.L", "MKS.L", "MSLH.L",
     "MDC.L", "MRC.L", "MRCH.L", "MAB.L", "MTO.L", "GROW.L", "MONY.L", "MNKS.L", "MGAM.L",
-    "MGNS.L", "MUT.L", "MYI.L", "NEX.L", "NBPE.L", "NETW.L", "NESF.L", "N91.L", "OSB.L", "ORIT.L",
+    "MGNS.L", "MUT.L", "MYI.L", "MCG.L", "NBPE.L", "NETW.L", "NESF.L", "N91.L", "OSB.L", "ORIT.L",
     "OXIG.L", "PHI.L", "PAGE.L", "PIN.L", "PAG.L", "PNN.L", "PNL.L", "PHLL.L", "PETS.L", "PTEC.L",
-    "PLUS.L", "PCT.L", "PFD.L", "PHP.L", "PRTC.L", "PZC.L", "QQ.L", "QLT.L", "RAT.L", "REDD.L",
+    "PLUS.L", "PCT.L", "PFD.L", "PHP.L", "PRTC.L", "PZC.L", "QQ.L", "QLT.L", "RAT.L", "ZIG.L",
     "RDW.L", "RSW.L", "RHIM.L", "RCP.L", "ROR.L", "RICA.L", "SAFE.L", "SVS.L", "SDP.L", "SOI.L",
-    "SAIN.L", "SEIT.L", "SNR.L", "SEQI.L", "SRP.L", "SHB.L", "SRE.L", "SSON.L", "SCT.L", "SXS.L",
+    "SAIN.L", "SEIT.L", "SNR.L", "SEQI.L", "SRP.L", "SHC.L", "SRE.L", "SSON.L", "SCT.L", "SXS.L",
     "SPI.L", "SPT.L", "SSPG.L", "STEM.L", "SUPR.L", "SYNC.L", "SYNT.L", "THRL.L", "TATE.L",
     "TBCG.L", "TEP.L", "TMPL.L", "TEM.L", "TRIG.L", "TIFS.L", "TCAP.L", "TRN.L", "TPK.L",
     "BBOX.L", "EBOX.L", "TRY.L", "TUI.L", "TLW.L", "TFIF.L", "UKCM.L", "SHED.L", "VANQ.L",
     "VSVS.L", "VCT.L", "VID.L", "VEIL.L", "VOF.L", "VMUK.L", "VTY.L", "FAN.L", "WPS.L", "WHR.L",
-    "WOSG.L", "JDW.L", "SMWH.L", "WTAN.L", "WIZZ.L", "WG.L", "WKP.L", "WWH.L", "SHC.L", "ZIG.L",
-    "MCG.L",
+    "WOSG.L", "JDW.L", "SMWH.L", "WTAN.L", "WIZZ.L", "WG.L", "WKP.L", "WWH.L",
 )
 PANELS = {DAX_PANEL: UNIVERSE, SDAX_PANEL: SDAX_UNIVERSE, FTSE250_PANEL: FTSE250_UNIVERSE}
 COLUMNS = ["Close", "High", "Low", "Volume"]

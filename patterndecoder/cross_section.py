@@ -77,7 +77,9 @@ panel:
   as archived in May 2023 (patterndecoder/panel.py), a list fixed before the
   test windows and from a market independent of the German panels; it
   includes investment trusts, because the table's sector labels do not
-  identify them reliably. To bound the computing time, only the models the
+  identify them reliably. Yahoo Finance has prices for 203 of the 250
+  companies; most of the others have since been taken over, merged or
+  delisted. To bound the computing time, only the models the
   hypothesis needs are trained: PatternDecoderNoConvBlock, the seven other
   neural models, and the PatternDecoder for a secondary comparison.
   Everything else is as for the DAX and the SDAX: features, training,
