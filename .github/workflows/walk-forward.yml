@@ -2,20 +2,22 @@ name: Walk-forward evaluation
 
 # Trains all models for several seeds and several test windows and compares
 # their forecasts with the benchmarks (patterndecoder/robustness.py); for the
-# panels DAX-PANEL and SYNTH-PANEL it runs the cross-section study instead
-# (patterndecoder/cross_section.py). Started by hand only. The ticker (a Yahoo
-# Finance ticker, a synthetic series or a panel) and single config values can
-# be changed for robustness checks; all other settings come from config/config.yaml.
+# panels (DAX-PANEL, SDAX-PANEL, FTSE250-PANEL, SYNTH-PANEL) it runs the
+# cross-section study instead (patterndecoder/cross_section.py), and with
+# target_days above 1 in the overrides the study of returns over several days
+# (patterndecoder/weekly.py). Started by hand only. The ticker (a Yahoo Finance
+# ticker, a synthetic series or a panel) and single config values can be
+# changed for robustness checks; all other settings come from config/config.yaml.
 
 on:
   workflow_dispatch:
     inputs:
       ticker:
-        description: "Yahoo Finance ticker (^GDAXI: DAX, ^GSPC: S&P 500), SYNTH-AR, SYNTH-MOTIF, SYNTH-CYCLE, or a panel: DAX-PANEL, SDAX-PANEL, SYNTH-PANEL"
+        description: "Yahoo Finance ticker (^GDAXI: DAX, ^GSPC: S&P 500), SYNTH-AR, SYNTH-MOTIF, SYNTH-CYCLE, or a panel: DAX-PANEL, SDAX-PANEL, FTSE250-PANEL, SYNTH-PANEL"
         required: true
         default: "^GDAXI"
       overrides:
-        description: 'Config values to change (JSON object, e.g. {"input_scale": 100})'
+        description: 'Config values to change (JSON object, e.g. {"input_scale": 100}; with "target_days" above 1: returns over several days)'
         required: true
         default: "{}"
       seeds:
@@ -73,7 +75,7 @@ jobs:
   run:
     needs: data
     runs-on: ubuntu-latest
-    timeout-minutes: 300
+    timeout-minutes: 355
     strategy:
       fail-fast: false
       matrix:
@@ -112,6 +114,7 @@ jobs:
           mkdir -p wf-out
           module=patterndecoder.robustness
           if [[ "$TICKER" == *-PANEL ]]; then module=patterndecoder.cross_section; fi
+          if jq -e '(.target_days // 1) > 1' <<< "$OVERRIDES" > /dev/null; then module=patterndecoder.weekly; fi
           python -m "$module" run --seed ${{ matrix.seed }} \
             --test-start ${{ matrix.start }} --out wf-out/s${{ matrix.seed }}_w${{ matrix.start }}.csv
 
@@ -156,6 +159,7 @@ jobs:
           echo "### ${TICKER}, overrides ${OVERRIDES}" >> "$GITHUB_STEP_SUMMARY"
           module=patterndecoder.robustness
           if [[ "$TICKER" == *-PANEL ]]; then module=patterndecoder.cross_section; fi
+          if jq -e '(.target_days // 1) > 1' <<< "$OVERRIDES" > /dev/null; then module=patterndecoder.weekly; fi
           python -m "$module" summarize wf-results/*.csv --out wf-summary.csv
           echo "--- pooled"; cat wf-summary.csv
           echo "--- windows"; cat wf-summary_windows.csv

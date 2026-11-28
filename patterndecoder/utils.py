@@ -45,7 +45,7 @@ import tensorflow as tf
 import yaml
 from prettytable import PrettyTable
 from statsmodels.tsa.arima.model import ARIMAResultsWrapper
-from patterndecoder.training import set_seed, split_train_validation
+from patterndecoder.training import forward_sums, set_seed, split_train_validation
 from patterndecoder.revin import RevIN
 
 
@@ -470,7 +470,8 @@ class WindowedDataset:
         params (dict): Configuration with window_size, forecast_horizon,
             batch_size, stride, shuffle_buffer, columns, target_column and
             optionally input_scale (factor for the return inputs, default 1),
-            calendar ("current" or "next") and expiry_features (see calendar_inputs).
+            calendar ("current" or "next"), expiry_features (see calendar_inputs)
+            and target_days (days summed in each target, default 1; forward_sums).
 
     Methods:
         __call__(dataframe, shuffle=False):
@@ -489,9 +490,6 @@ class WindowedDataset:
                 - stride (int): Stride between consecutive windows.
                 - shuffle_buffer (int): Buffer size for shuffling windows.
                 - columns (list[str]): List of column names to use as features.
-
-        Returns:
-            None
         """
 
         self.window_size = params["window_size"]
@@ -506,6 +504,7 @@ class WindowedDataset:
         # Calendar of each row's own day or of the next trading day (see calendar_inputs)
         self.calendar = params.get("calendar", "current")
         self.expiry = bool(params.get("expiry_features", False))
+        self.target_days = int(params.get("target_days", 1))
 
     def __call__(
         self, dataframe, shuffle=False, training_mode=True, multi_horizon=False
@@ -528,6 +527,9 @@ class WindowedDataset:
             raise KeyError(
                 f"Target column '{self.target_column}' not found in DataFrame"
             )
+        # A target of several days sums their returns; the inputs end before the last one
+        x_array = x_array[: len(x_array) - self.target_days + 1]
+        y_array = forward_sums(y_array, self.target_days)
 
         min_length = self.window_size + self.forecast_horizon
         if len(x_array) < min_length:
@@ -732,15 +734,13 @@ def get_model_performance(model, params, dataset):
         # ARIMA predictions are already aligned with the correct indices
     else:
         predictions = model.predict(windowed_dataset, verbose=0)
-        # predictions shape: (num_windows, forecast_horizon, num_features)
-        # Since forecast_horizon=1, squeeze that dimension
+        # (num_windows, forecast_horizon, num_features): drop the horizon axis
         if len(predictions.shape) == 3:
-            predictions = predictions.squeeze(
-                axis=1
-            )  # Shape: (num_windows, num_features)
+            predictions = predictions.squeeze(axis=1)
 
-    # Calculate the correct number of predictions
-    num_predictions = len(dataset) - params["window_size"]
+    # Targets: the returns of the next target_days days, dated by the first of them
+    targets = forward_sums(dataset, params.get("target_days", 1))
+    num_predictions = len(targets) - params["window_size"]
 
     # Ensure predictions match expected length
     if len(predictions) != num_predictions:
@@ -751,7 +751,7 @@ def get_model_performance(model, params, dataset):
     # Create DataFrame for predictions - align with correct indices
     predictions_df = pd.DataFrame(
         predictions,
-        index=dataset.index[params["window_size"] :],  # Use original dataset indices
+        index=targets.index[params["window_size"] :],
         columns=dataset.columns
         if hasattr(dataset, "columns")
         else [f"feature_{i}" for i in range(predictions.shape[1])],
@@ -759,8 +759,8 @@ def get_model_performance(model, params, dataset):
 
     # Create DataFrame for actual values - these are the target values we're predicting
     actuals_df = pd.DataFrame(
-        dataset.iloc[params["window_size"] :].values,
-        index=dataset.index[params["window_size"] :],
+        targets.iloc[params["window_size"] :].values,
+        index=targets.index[params["window_size"] :],
         columns=dataset.columns
         if hasattr(dataset, "columns")
         else [f"feature_{i}" for i in range(dataset.shape[1])],

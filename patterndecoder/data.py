@@ -11,6 +11,7 @@ import hashlib
 import warnings
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import yaml
 import yfinance as yf
@@ -110,11 +111,30 @@ def get_stock_data(params, download=False):
     return series_dataframe
 
 
+def describe_returns(close):
+    """
+    Data checks of one price series: missing prices, zero daily log returns,
+    trading days per full calendar year and the five largest daily moves.
+    """
+    returns = np.log(close / close.shift(1)).iloc[1:]
+    per_year = returns.groupby(returns.index.year).size().iloc[1:-1]
+    days = f"{per_year.min()} to {per_year.max()}" if len(per_year) else "-"
+    moves = ", ".join(
+        f"{day:%Y-%m-%d} {100 * returns[day]:+.1f} %"
+        for day in returns.abs().nlargest(5).index
+    )
+    return (
+        f"{int(close.isna().sum())} missing prices, {int((returns == 0).sum())} zero returns, "
+        f"{days} trading days per full year; largest moves: {moves}"
+    )
+
+
 def main(config_path="config/config.yaml"):
-    """Downloads the configured data if needed and reports whether they match."""
+    """Downloads the configured data if needed, checks them and reports whether they match."""
     with open(config_path, encoding="utf-8") as file:
         params = yaml.safe_load(file)
     dataframe = get_stock_data(params)
+    print(describe_returns(dataframe[params["columns"][0]]))
     summary = (
         f"{params['ticker']}: {len(dataframe)} rows, "
         f"{dataframe.index[0].date()} to {dataframe.index[-1].date()}"

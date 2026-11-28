@@ -13,6 +13,9 @@ under MAE), plus the oracle for synthetic series; for volatility
 (``series: parkinson``) persistence, EWMA, HAR and the training median
 (patterndecoder/volatility.py); for trading volume (``series: log_volume``)
 the same and HAR-X, a HAR model with calendar dummies (patterndecoder/volume.py).
+With ``target_days`` above 1 every target is the sum of the returns of that
+many days, summed within the training, validation and test data (see
+forward_sums; patterndecoder/weekly.py runs that study).
 
 ``summarize`` averages each model's forecasts over the seeds (an ensemble that
 removes most of the seed noise) and reports, per window and pooled over all
@@ -45,7 +48,7 @@ from patterndecoder.experiments import (
 )
 from patterndecoder.panel import row_position
 from patterndecoder.study import load_returns, model_files
-from patterndecoder.training import split_train_validation
+from patterndecoder.training import forward_sums, split_train_validation
 from patterndecoder.utils import compile_and_train, get_model_performance, load_config
 from patterndecoder.volatility import volatility_benchmarks
 from patterndecoder.volume import volume_benchmarks
@@ -53,11 +56,13 @@ from patterndecoder.volume import volume_benchmarks
 FIELDS = ["model", "seed", "test_start", "date", "actual", "prediction", "val_mae"]
 # The two benchmarks the models are tested against: for returns, for volume, for volatility
 TESTED_PAIRS = (("Naive", "Median"), ("HARX", "HAR"), ("HAR", "Persistence"))
-# Rows that are not models; Oracle exists only for synthetic series
-BENCHMARKS = ("Naive", "Median", "Oracle", "HAR", "HARX", "Persistence", "EWMA")
+# Rows that are not models; Oracle exists only for synthetic series, LastWeek
+# only for returns over several days (patterndecoder/weekly.py)
+BENCHMARKS = ("Naive", "Median", "Oracle", "HAR", "HARX", "Persistence", "EWMA", "LastWeek")
 LABELS = {
     "Naive": "zero",
     "Median": "median",
+    "LastWeek": "last week",
     "HAR": "HAR",
     "HARX": "HAR-X",
     "Persistence": "persistence",
@@ -94,12 +99,16 @@ def benchmark_forecasts(train_data, test_data, params, oracle=None):
     if series == "log_volume":
         return volume_benchmarks(train_data, test_data, params)
     target, window = params["target_column"], params["window_size"]
+    days = params.get("target_days", 1)
     fit_data, val_data = split_train_validation(train_data, params)
-    val_targets = val_data[target].iloc[window:]
-    actuals = test_data[target].iloc[window:]
+    val_targets = forward_sums(val_data[target], days).iloc[window:]
+    actuals = forward_sums(test_data[target], days).iloc[window:]
     constants = {
         "Naive": (0.0, 0.0),
-        "Median": (train_data[target].median(), fit_data[target].median()),
+        "Median": (
+            forward_sums(train_data[target], days).median(),
+            forward_sums(fit_data[target], days).median(),
+        ),
     }
     forecasts = {
         name: (
@@ -115,7 +124,14 @@ def benchmark_forecasts(train_data, test_data, params, oracle=None):
 
 def benchmark_rows(train_data, test_data, params, oracle=None):
     """Daily forecasts and validation MAE of the benchmarks."""
-    forecasts, val_targets, actuals = benchmark_forecasts(train_data, test_data, params, oracle)
+    return forecast_rows(*benchmark_forecasts(train_data, test_data, params, oracle))
+
+
+def forecast_rows(forecasts, val_targets, actuals):
+    """
+    (model, date, actual, prediction, val_mae) rows from the output of
+    benchmark_forecasts: name -> (test forecasts, validation forecasts).
+    """
     rows = []
     for name, (test_forecast, val_forecast) in forecasts.items():
         val_mae = float(np.mean(np.abs(val_targets - val_forecast)))
@@ -131,7 +147,8 @@ def model_rows(params, model_yaml, data, workdir):
     model, config_path = build_model(params, model_yaml, workdir)
     history, model = compile_and_train(model, train_data, config_path)
     predictions = get_model_performance(model, params, test_data)["predictions"]
-    actuals = test_data[params["target_column"]].iloc[params["window_size"] :]
+    targets = forward_sums(test_data[params["target_column"]], params.get("target_days", 1))
+    actuals = targets.iloc[params["window_size"] :]
     val_mae = float(min(history.history["val_mae"]))
     name = load_config(model_yaml)["name"]
     return [

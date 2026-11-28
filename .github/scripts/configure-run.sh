@@ -11,11 +11,13 @@ if ! [[ "$TICKER" =~ $ticker_pattern ]]; then
   echo "::error::invalid ticker '$TICKER'"; exit 1
 fi
 sed -i -E "s/^ticker:.*/ticker: \"${TICKER}\"/" "$config"
-# the checksum describes the DAX data of the published results
-if [ "$TICKER" != "^GDAXI" ]; then sed -i '/^data_checksum:/d' "$config"; fi
 
 if ! echo "${OVERRIDES:-{\}}" | jq -e 'type == "object"' > /dev/null; then
   echo "::error::overrides must be a JSON object"; exit 1
+fi
+# the checksum describes the DAX data of the published results (their date range)
+if [ "$TICKER" != "^GDAXI" ] || echo "${OVERRIDES:-{\}}" | jq -e 'has("start") or has("end")' > /dev/null; then
+  sed -i '/^data_checksum:/d' "$config"
 fi
 key_pattern='^[a-z0-9_]+$'
 value_pattern='^[A-Za-z0-9._+"-]+$'

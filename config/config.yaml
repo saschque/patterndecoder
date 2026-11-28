@@ -1,6 +1,7 @@
 #window_params:
 window_size: 30
 forecast_horizon: 1
+target_days: 1  # days summed in each target: 1 forecasts the next day, 5 the next week (patterndecoder/weekly.py)
 n_features: 7
 batch_size: 32
 stride: 1
