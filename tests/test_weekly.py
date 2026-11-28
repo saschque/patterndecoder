@@ -146,17 +146,8 @@ def forecast_rows(days=100, seed=5):
             }
             for (model, window, val_mae), predictions in forecasts.items():
                 rows += [
-                    {
-                        "model": model,
-                        "seed": run_seed,
-                        "test_start": start,
-                        "date": f"{date:%Y-%m-%d}",
-                        "actual": actual,
-                        "prediction": prediction,
-                        "val_mae": val_mae,
-                        "window_size": window,
-                        "target_days": 5,
-                    }
+                    dict(zip(weekly.FIELDS, (model, run_seed, start, f"{date:%Y-%m-%d}",
+                                             actual, prediction, val_mae, window, 5)))
                     for date, actual, prediction in zip(dates, actuals, predictions)
                 ]
     return rows
