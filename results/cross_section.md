@@ -1,6 +1,6 @@
-# Cross section of German stocks
+# Cross section of German and UK stocks
 
-Results of the cross-section study (`patterndecoder/cross_section.py`), computed with the workflow "Walk-forward evaluation" (tickers `DAX-PANEL`, `SDAX-PANEL` and `SYNTH-PANEL`) on 27 and 28 November 2026; the small caps of the SDAX follow in their own section. Instead of forecasting one index, the models rank the stocks of a panel by their next-day return relative to the others, where studies of single stocks have found short-term patterns such as reversal. Each trading day gives one observation per stock, so the evaluation can detect much weaker signals than on a single series. The design was fixed in `patterndecoder/cross_section.py` before any model was trained on the panel:
+Results of the cross-section study (`patterndecoder/cross_section.py`), computed with the workflow "Walk-forward evaluation" (tickers `DAX-PANEL`, `SDAX-PANEL`, `FTSE250-PANEL` and `SYNTH-PANEL`) on 27 and 28 November 2026; the small caps of the SDAX and the confirmation on the FTSE 250 follow in their own sections. Instead of forecasting one index, the models rank the stocks of a panel by their next-day return relative to the others, where studies of single stocks have found short-term patterns such as reversal. Each trading day gives one observation per stock, so the evaluation can detect much weaker signals than on a single series. The design was fixed in `patterndecoder/cross_section.py` before any model was trained on the panel:
 
 - **Universe:** the 40 members of the DAX on 20 March 2023, a date before the first test window, so that the test has no survivorship bias. Stocks enter the panel when their prices start (Daimler Truck in December 2021, Porsche AG in September 2022) and stay in it after leaving the DAX. Yahoo Finance has no data for Covestro, so the panel has 39 stocks, 38.4 per test day on average.
 - **Data:** daily Xetra closing prices adjusted for dividends and splits, daily high and low and volume from Yahoo Finance, 5 February 2021 to 5 February 2026. Deutsche Post (DHL) has no reported volume on 64 days; windows that contain such a day are left out.
@@ -151,3 +151,56 @@ Comparison model (highest mean validation IC of the other models): Transformer_C
 3. **The seed average matters.** Single runs reach much lower ICs (0.008 to 0.028) than the forecasts averaged over ten seeds; for the PatternDecoder 0.016 instead of 0.035.
 4. **The signal does not pay for daily trading.** Before costs, the long-short portfolios earn 11 % to 36 % a year, but they turn over 2.3 to 3.3 times their capital a day, so they break even at costs of 1.6 to 5.0 basis points per unit of turnover, below the bid-ask spreads typical of small caps. After 5 basis points only the PatternDecoder's portfolio is just positive (+0.2 % a year).
 5. **Small and large caps differ.** In the DAX panel no forecast had a significantly positive IC; in the SDAX panel all have. That fits studies that find short-term reversal mainly in less liquid stocks (Avramov, Chordia and Goyal, 2006, Journal of Finance 61(5)); the survivorship of this panel may add to it, but it affects the models and the benchmarks alike.
+
+## Confirmation on the FTSE 250
+
+Designed after the SDAX run and before any run on these stocks (recorded in `patterndecoder/cross_section.py`), with one confirmatory hypothesis from the SDAX result: PatternDecoderNoConvBlock has a higher mean daily IC than the comparison model, the other neural model with the highest mean validation IC, tested one-sided with the Newey-West test at the 5 % level. The universe is the 250 constituents of the FTSE 250 table of the English Wikipedia after the index changes of 25 April 2023, as archived in May 2023: a list fixed before the test windows, from a market independent of the German panels. It includes investment trusts, because the table's sector labels do not identify them reliably. Yahoo Finance has prices for 203 of the 250 companies (202.8 per test day); most of the others have since been taken over, merged or delisted. To bound the computing time, only the nine models the hypothesis needs were trained: PatternDecoderNoConvBlock, the seven other neural models, and the PatternDecoder for a secondary comparison. Everything else is as for the DAX and the SDAX.
+
+Test windows: 2023-08-10 to 2024-02-07; 2024-02-08 to 2024-08-07; 2024-08-08 to 2025-02-05; 2025-02-06 to 2025-08-06; 2025-08-07 to 2026-02-05. 10 seeds, 631 test days, 202.8 stocks per day. Columns as for the SDAX; rank among the nine trained models in brackets.
+
+| Model | IC | p | days with IC > 0 | single run IC | vs Linear | p | vs reversal | p | MAE vs zero | long-short p.a. before costs | after costs | Sharpe after costs | break-even cost | val IC |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| PatternDecoderNoConvBlock (1) | 0.0405 | < 0.001 | 63.4 % | 0.0288 | +0.0119 | 0.007 | +0.0044 | 0.049 | -0.06 % | +30.3 % | -8.2 % | -0.88 | 3.9 bp | 0.0324 |
+| Reversal | 0.0362 | < 0.001 | 60.2 % | 0.0362 | +0.0075 | 0.106 | +0.0000 | - | -0.04 % | +25.2 % | -13.7 % | -1.42 | 3.2 bp | 0.0369 |
+| Informer (2) | 0.0360 | < 0.001 | 63.2 % | 0.0170 | +0.0073 | 0.058 | -0.0002 | 0.965 | -0.04 % | +23.9 % | -12.4 % | -1.43 | 3.3 bp | 0.0199 |
+| Transformer (3) | 0.0357 | < 0.001 | 61.3 % | 0.0208 | +0.0071 | 0.090 | -0.0004 | 0.888 | -0.04 % | +25.6 % | -13.9 % | -1.56 | 3.2 bp | 0.0255 |
+| Transformer_Conv (4) | 0.0346 | < 0.001 | 61.0 % | 0.0168 | +0.0060 | 0.160 | -0.0016 | 0.645 | -0.03 % | +20.9 % | -17.5 % | -2.00 | 2.7 bp | 0.0198 |
+| PatternDecoder (5) | 0.0343 | < 0.001 | 61.5 % | 0.0180 | +0.0056 | 0.193 | -0.0019 | 0.594 | -0.03 % | +24.2 % | -14.4 % | -1.64 | 3.1 bp | 0.0228 |
+| Transformer_Logsparse (6) | 0.0322 | < 0.001 | 59.7 % | 0.0169 | +0.0036 | 0.411 | -0.0040 | 0.199 | -0.04 % | +22.0 % | -19.2 % | -2.16 | 2.7 bp | 0.0234 |
+| DecoderOnlyTransformer (7) | 0.0318 | < 0.001 | 61.8 % | 0.0150 | +0.0031 | 0.498 | -0.0044 | 0.454 | -0.03 % | +24.8 % | -3.2 % | -0.35 | 4.4 bp | 0.0171 |
+| Linear | 0.0286 | < 0.001 | 61.3 % | 0.0286 | +0.0000 | - | -0.0075 | 0.106 | +0.03 % | +20.9 % | -19.5 % | -2.25 | 2.6 bp | 0.0249 |
+| Autoformer (8) | 0.0254 | < 0.001 | 61.0 % | 0.0152 | -0.0032 | 0.501 | -0.0107 | 0.005 | -0.03 % | +20.0 % | -11.8 % | -1.39 | 3.1 bp | 0.0206 |
+| DecoderOnlyTransformer_Conv (9) | 0.0231 | < 0.001 | 56.9 % | 0.0118 | -0.0056 | 0.226 | -0.0131 | 0.017 | -0.03 % | +18.3 % | -11.5 % | -1.26 | 3.1 bp | 0.0146 |
+| Naive | - | - | - | - | - | - | - | - | +0.00 % | - | - | - | - | - |
+
+IC per test window:
+
+| Model | 2023-08-10 to 2024-02-07 | 2024-02-08 to 2024-08-07 | 2024-08-08 to 2025-02-05 | 2025-02-06 to 2025-08-06 | 2025-08-07 to 2026-02-05 |
+|---|---|---|---|---|---|
+| PatternDecoderNoConvBlock | 0.0409 | 0.0571 | 0.0523 | 0.0301 | 0.0224 |
+| Reversal | 0.0437 | 0.0557 | 0.0453 | 0.0184 | 0.0177 |
+| Informer | 0.0442 | 0.0357 | 0.0415 | 0.0391 | 0.0196 |
+| Transformer | 0.0298 | 0.0493 | 0.0477 | 0.0269 | 0.0250 |
+| Transformer_Conv | 0.0380 | 0.0454 | 0.0450 | 0.0297 | 0.0151 |
+| PatternDecoder | 0.0339 | 0.0544 | 0.0453 | 0.0254 | 0.0125 |
+| Transformer_Logsparse | 0.0340 | 0.0488 | 0.0466 | 0.0229 | 0.0089 |
+| DecoderOnlyTransformer | 0.0182 | 0.0359 | 0.0400 | 0.0420 | 0.0228 |
+| Linear | 0.0376 | 0.0205 | 0.0328 | 0.0258 | 0.0265 |
+| Autoformer | 0.0390 | 0.0356 | 0.0221 | 0.0105 | 0.0199 |
+| DecoderOnlyTransformer_Conv | 0.0332 | 0.0227 | 0.0185 | 0.0244 | 0.0165 |
+| Naive | - | - | - | - | - |
+
+Comparison model (highest mean validation IC of the other models): Transformer
+- PatternDecoder minus Transformer: IC difference -0.0015, p = 0.573 (one-sided 0.714)
+- PatternDecoderNoConvBlock minus Transformer: IC difference +0.0048, p = 0.048 (one-sided 0.024)
+
+## Findings of the confirmation
+
+1. **The hypothesis is confirmed.** PatternDecoderNoConvBlock has the highest IC of the nine models (0.041). The comparison model chosen on the validation set is the Transformer (0.036); the IC difference of +0.005 is significant in the pre-specified one-sided test (p = 0.024; two-sided 0.048). PatternDecoderNoConvBlock is ahead of the Transformer in four of the five test windows and ranks first or second in three of them.
+2. **UK mid caps also hold a signal.** All forecasts have a significantly positive IC (0.023 to 0.041 for the models, p < 0.001), in every test window; the reversal rule reaches 0.036. PatternDecoderNoConvBlock is also significantly better than Linear (p = 0.007) and the reversal rule (p = 0.049), and it has the lowest MAE (0.06 % below the zero forecast, p = 0.002).
+3. **The PatternDecoder itself does not stand out.** It ranks sixth (0.034) and does not differ from the comparison model (one-sided p = 0.71). The advantage belongs to the variant with a dense instead of a convolutional token embedding.
+4. **The effect is small and does not pay for daily trading.** The lead of +0.005 in IC is about an eighth of the IC itself. The long-short portfolios earn 18 % to 30 % a year before costs, but break even at costs of 2.7 to 4.4 basis points per unit of turnover, and all lose money after 5 basis points.
+
+## Overall
+
+Across the panels, the evidence for the PatternDecoder is consistent but narrow. Where a cross-sectional signal exists (the synthetic panel, the SDAX and the FTSE 250), PatternDecoderNoConvBlock is the best or close to the best model: on the synthetic panel it reaches 97 % of the oracle's IC, on the SDAX it leads with p = 0.043 against the comparison model, and on the FTSE 250 the pre-specified confirmation succeeds with a one-sided p = 0.024. Where no signal exists (the DAX), it is not better than the others. The signal itself is largely short-term reversal, too small to pay for daily trading.
